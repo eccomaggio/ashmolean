@@ -1,0 +1,23 @@
+INFO:Starting the script
+INFO:Reading from penny_sculpture_1-10.txt and writing to penny_sculpture_1-10.csv...
+INFO:Command(order=<Instruction.META: 5>, details=['PUB_DATE', '01/01/1992'])
+INFO:Command(order=<Instruction.NEW_SECTION: 2>, details=['1', '2'])
+INFO:Command(order=<Instruction.PROCESS: 3>, details=[])
+INFO:Command(order=<Instruction.NEW_SECTION: 2>, details=['3'])
+INFO:[Description shared between items 1 (WA1947.191.176.1) & 2 (WA1947.191.176.2)]
+INFO:Command(order=<Instruction.PROCESS: 3>, details=[])
+INFO:Command(order=<Instruction.NEW_SECTION: 2>, details=['4'])
+INFO:Command(order=<Instruction.PROCESS: 3>, details=[])
+INFO:Command(order=<Instruction.NEW_SECTION: 2>, details=['5'])
+INFO:Command(order=<Instruction.PROCESS: 3>, details=[])
+INFO:Command(order=<Instruction.NEW_SECTION: 2>, details=['6'])
+INFO:Command(order=<Instruction.PROCESS: 3>, details=[])
+INFO:Command(order=<Instruction.NEW_SECTION: 2>, details=['7'])
+INFO:Command(order=<Instruction.PROCESS: 3>, details=[])
+INFO:Command(order=<Instruction.NEW_SECTION: 2>, details=['8'])
+INFO:Command(order=<Instruction.PROCESS: 3>, details=[])
+INFO:Command(order=<Instruction.NEW_SECTION: 2>, details=['9'])
+INFO:Command(order=<Instruction.PROCESS: 3>, details=[])
+INFO:Command(order=<Instruction.NEW_SECTION: 2>, details=['10'])
+INFO:Command(order=<Instruction.PROCESS: 3>, details=[])
+INFO:Processed 9 sections from penny_sculpture_1-10.txt.
