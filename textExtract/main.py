@@ -1,14 +1,12 @@
 from pathlib import Path
 from csv import reader, writer
 import argparse
-# from pprint import pprint
-# from openpyxl import load_workbook, Workbook
 from openpyxl import load_workbook  # type: ignore[import]
 # import datetime
 # import pytz
 from enum import Enum, auto
 from dataclasses import dataclass
-# from codecs import BOM_UTF8
+# from typing import Iterable
 import logging
 
 logging.basicConfig(
@@ -54,6 +52,7 @@ def read_lines(file_path: Path) -> list[str]:
         raw_lines = file.readlines()
     if ord(raw_lines[0][0]) == 65279:
         raw_lines[0] = raw_lines[0][1:]
+    raw_lines = [line.strip() for line in raw_lines]
     return raw_lines
         # return file.readlines()
 
@@ -75,7 +74,8 @@ def remove_bom(line: str) -> str:
     # return line[3:] if line.startswith(codecs.BOM_UTF8) else line
     return line[3:] if line.startswith("\xFF\xFE") else line
 
-def read_csv(file_path: Path) -> list[str]:
+# def read_csv(file_path: Path) -> list[str]:
+def read_csv(file_path: Path) -> list[list[str]]:
     """Read a CSV file and return its content as a list of lists."""
     with file_path.open("r", encoding="utf-8") as file:
         csv_reader = reader(file)
@@ -172,7 +172,7 @@ def group_lines(raw_lines: list[str], concordance: dict[str, list[str]]) -> tupl
     # if ord(raw_lines[0][0]) == 65279:
     #     raw_lines[0] = raw_lines[0][1:]
     for line in raw_lines:
-        line = line.strip()
+        # line = line.strip()
         if not line:
             continue
         command: Command = get_command(line)
@@ -192,7 +192,7 @@ def group_lines(raw_lines: list[str], concordance: dict[str, list[str]]) -> tupl
                 for section_to_save in current_sections:
                     processed_text[section_to_save] = section
                 current_sections = command.details
-                currently_ignoring = True
+                currently_ignoring = True ## ignore text at beginning of section
                 section = []
             case Instruction.META:
                 if command.details[0].lower() == "pub_date":
