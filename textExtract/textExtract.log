@@ -1,21 +1,159 @@
+INFO:Reading from penny_sculpture_11-50.edited.txt and writing to penny_sculpture_11-50.edited.csv...
+INFO:META -> ['PUB_DATE', '01/01/1992']
+INFO:NEW_SECTION -> ['11']
+INFO:PROCESS 
+INFO:NEW_SECTION -> ['12']
+INFO:PROCESS 
+INFO:NEW_SECTION -> ['13']
+INFO:PROCESS 
+INFO:NEW_SECTION -> ['14']
+INFO:PROCESS 
+INFO:NEW_SECTION -> ['15']
+INFO:PROCESS 
+INFO:NEW_SECTION -> ['16']
+INFO:PROCESS 
+INFO:NEW_SECTION -> ['17']
+INFO:PROCESS 
+INFO:NEW_SECTION -> ['18', '19']
+INFO:PROCESS 
+INFO:[Description shared between 2 items: 18 (WA1984.45) & 19 (WA1984.46)]
+INFO:NEW_SECTION -> ['20']
+INFO:PROCESS 
+INFO:NEW_SECTION -> ['21']
+INFO:PROCESS 
+INFO:NEW_SECTION -> ['22', '23', '24', '25']
+INFO:PROCESS 
+INFO:[Description shared between 4 items: 22 (WA1950.62) & 23 (WA1950.63) & 24 (WA1950.64) & 25 (WA1950.65)]
+INFO:NEW_SECTION -> ['26']
+INFO:PROCESS 
+INFO:NEW_SECTION -> ['27']
+INFO:PROCESS 
+INFO:NEW_SECTION -> ['28']
+INFO:PROCESS 
+INFO:NEW_SECTION -> ['29']
+INFO:PROCESS 
+INFO:NEW_SECTION -> ['30', '31']
+INFO:PROCESS 
+INFO:[Description shared between 2 items: 30 (WA1888.CDEF.B684) & 31 (WA1888.CDEF.B685)]
+INFO:NEW_SECTION -> ['32']
+INFO:PROCESS 
+INFO:NEW_SECTION -> ['33']
+INFO:PROCESS 
+INFO:NEW_SECTION -> ['34']
+INFO:PROCESS 
+INFO:NEW_SECTION -> ['35']
+INFO:PROCESS 
+INFO:NEW_SECTION -> ['36']
+INFO:PROCESS 
+INFO:NEW_SECTION -> ['37']
+INFO:PROCESS 
+INFO:NEW_SECTION -> ['38']
+INFO:PROCESS 
+INFO:NEW_SECTION -> ['39']
+INFO:PROCESS 
+INFO:NEW_SECTION -> ['40']
+INFO:PROCESS 
+INFO:NEW_SECTION -> ['41']
+INFO:PROCESS 
+INFO:NEW_SECTION -> ['42']
+INFO:PROCESS 
+INFO:NEW_SECTION -> ['43']
+INFO:PROCESS 
+INFO:NEW_SECTION -> ['44']
+INFO:PROCESS 
+INFO:NEW_SECTION -> ['45']
+INFO:PROCESS 
+INFO:NEW_SECTION -> ['46']
+INFO:PROCESS 
+INFO:NEW_SECTION -> ['47']
+INFO:PROCESS 
+INFO:NEW_SECTION -> ['48']
+INFO:PROCESS 
+INFO:NEW_SECTION -> ['49']
+INFO:PROCESS 
+INFO:NEW_SECTION -> ['50']
+INFO:PROCESS 
+INFO:**********************************************************************
+	**Overview of commands performed:
+	**defaultdict(<class 'int'>, {'META': 1, 'NEW_SECTION': 35, 'PROCESS': 35, 'NONE': 190, 'link': 33, 'EXTRA_sections': 5})
+	**Each section included a 'process' statement: True
+	**Total number of sections, including ones sharing same description = 40
+	*************************************************************************
+INFO:Processed 39 sections from penny_sculpture_11-50.edited.txt.
+
+
 INFO:Reading from penny_sculpture_1-10.edited.txt and writing to penny_sculpture_1-10.edited.csv...
-INFO:Command(order=<Instruction.NEW_SECTION: 2>, details=['1', '2'])
-INFO:Command(order=<Instruction.PROCESS: 3>, details=[])
-INFO:Command(order=<Instruction.NEW_SECTION: 2>, details=['3'])
-INFO:[Description shared between items 1 (WA1947.191.176.1) & 2 (WA1947.191.176.2)]
-INFO:Command(order=<Instruction.PROCESS: 3>, details=[])
-INFO:Command(order=<Instruction.NEW_SECTION: 2>, details=['4'])
-INFO:Command(order=<Instruction.PROCESS: 3>, details=[])
-INFO:Command(order=<Instruction.NEW_SECTION: 2>, details=['5'])
-INFO:Command(order=<Instruction.PROCESS: 3>, details=[])
-INFO:Command(order=<Instruction.NEW_SECTION: 2>, details=['6'])
-INFO:Command(order=<Instruction.PROCESS: 3>, details=[])
-INFO:Command(order=<Instruction.NEW_SECTION: 2>, details=['7'])
-INFO:Command(order=<Instruction.PROCESS: 3>, details=[])
-INFO:Command(order=<Instruction.NEW_SECTION: 2>, details=['8'])
-INFO:Command(order=<Instruction.PROCESS: 3>, details=[])
-INFO:Command(order=<Instruction.NEW_SECTION: 2>, details=['9'])
-INFO:Command(order=<Instruction.PROCESS: 3>, details=[])
-INFO:Command(order=<Instruction.NEW_SECTION: 2>, details=['10'])
-INFO:Command(order=<Instruction.PROCESS: 3>, details=[])
+INFO:NEW_SECTION -> ['1', '2']
+INFO:PROCESS 
+INFO:[Description shared between 2 items: 1 (WA1947.191.176.1) & 2 (WA1947.191.176.2)]
+INFO:NEW_SECTION -> ['3']
+INFO:PROCESS 
+INFO:NEW_SECTION -> ['4']
+INFO:PROCESS 
+INFO:NEW_SECTION -> ['5']
+INFO:PROCESS 
+INFO:NEW_SECTION -> ['6']
+INFO:PROCESS 
+INFO:NEW_SECTION -> ['7']
+INFO:PROCESS 
+INFO:NEW_SECTION -> ['8']
+INFO:PROCESS 
+INFO:NEW_SECTION -> ['9']
+INFO:PROCESS 
+INFO:NEW_SECTION -> ['10']
+INFO:PROCESS 
+INFO:**********************************************************************
+	**Overview of commands performed:
+	**defaultdict(<class 'int'>, {'NEW_SECTION': 9, 'PROCESS': 9, 'link': 4, 'NONE': 46, 'EXTRA_sections': 1})
+	**Each section included a 'process' statement: True
+	**Total number of sections, including ones sharing same description = 10
+	*************************************************************************
 INFO:Processed 9 sections from penny_sculpture_1-10.edited.txt.
+
+
+INFO:Reading from penny_sculpture_51-69.edited.txt and writing to penny_sculpture_51-69.edited.csv...
+INFO:META -> ['PUB_DATE', '01/01/1992']
+INFO:NEW_SECTION -> ['51', '52']
+INFO:PROCESS 
+INFO:[Description shared between 2 items: 51 (WA1978.62.1) & 52 (WA1978.62.2)]
+INFO:NEW_SECTION -> ['53']
+INFO:PROCESS 
+INFO:NEW_SECTION -> ['54']
+INFO:PROCESS 
+INFO:NEW_SECTION -> ['55']
+INFO:PROCESS 
+INFO:NEW_SECTION -> ['56']
+INFO:PROCESS 
+INFO:NEW_SECTION -> ['57']
+INFO:PROCESS 
+INFO:NEW_SECTION -> ['58']
+INFO:PROCESS 
+INFO:NEW_SECTION -> ['59']
+INFO:PROCESS 
+INFO:NEW_SECTION -> ['60']
+INFO:PROCESS 
+INFO:NEW_SECTION -> ['61']
+INFO:PROCESS 
+INFO:NEW_SECTION -> ['62']
+INFO:PROCESS 
+INFO:NEW_SECTION -> ['63']
+INFO:PROCESS 
+INFO:NEW_SECTION -> ['64', '65']
+INFO:PROCESS 
+INFO:[Description shared between 2 items: 64 (UNKNOWN) & 65 (UNKNOWN)]
+INFO:NEW_SECTION -> ['66', '67']
+INFO:PROCESS 
+INFO:[Description shared between 2 items: 66 (UNKNOWN) & 67 (UNKNOWN)]
+INFO:NEW_SECTION -> ['68']
+INFO:PROCESS 
+INFO:NEW_SECTION -> ['69']
+INFO:PROCESS 
+INFO:**********************************************************************
+	**Overview of commands performed:
+	**defaultdict(<class 'int'>, {'META': 1, 'NEW_SECTION': 16, 'PROCESS': 16, 'NONE': 83, 'link': 28, 'EXTRA_sections': 3})
+	**Each section included a 'process' statement: True
+	**Total number of sections, including ones sharing same description = 19
+	*************************************************************************
+INFO:Processed 14 sections from penny_sculpture_51-69.edited.txt.
+
+

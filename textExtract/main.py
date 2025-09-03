@@ -9,6 +9,10 @@ from dataclasses import dataclass
 # from typing import Iterable
 import logging
 import re
+from collections import defaultdict
+# from pprint import pprint
+
+overview: defaultdict[str, int] = defaultdict(int)
 
 logging.basicConfig(
     filename='textExtract.log',
@@ -36,6 +40,7 @@ class Command:
 
 
 type ExcelRow = tuple[str, str, str, str, str, str, str, str, str, str, str, str, str]
+
 
 def argument_parser() -> tuple[Path, Path, Path]:
     """Parse command line arguments."""
@@ -74,6 +79,7 @@ def write_csv(file_path: Path, data: list) -> None:
 def remove_bom(line: str) -> str:
     # return line[3:] if line.startswith(codecs.BOM_UTF8) else line
     return line[3:] if line.startswith("\xFF\xFE") else line
+
 
 # def read_csv(file_path: Path) -> list[str]:
 def read_csv(file_path: Path) -> list[list[str]]:
@@ -143,7 +149,7 @@ def get_command(line: str) -> Command:
     order = Instruction.NONE
     detail = []
     if line.startswith("@@"):
-        line = line[2:]
+        line = line[2:].strip()
         match line:
             case line if line[0].isnumeric():
                 order = Instruction.NEW_SECTION
@@ -158,8 +164,8 @@ def get_command(line: str) -> Command:
             case _:
                 order = Instruction.UNKNOWN
                 detail = [line]
-        if order.value != Instruction.NONE.value:
-            logging.info(Command(order, detail))
+        # if order != Instruction.NONE:
+        #     logging.info(f"{order.name} {f'-> {detail}' if detail else ''}")
     return Command(order, detail)
 
 
@@ -179,6 +185,9 @@ def parse_inline_command(part:str, concordance) -> tuple[str, str, str]:
     if len(tmp) == 1:
         rest = tmp[0]
         command, value = "",""
+        msg = f"** Unterminated command: \"{rest}\""
+        logging.critical(msg)
+        print(msg)
 
     # SINGLE COMMAND
     else:
@@ -218,6 +227,7 @@ def get_inline_commands(line:str, concordance) -> str:
                     # as are all inline commands currently!
                     logging.warning(f"The command '{command}' is unknown.")
                     amended_line.append(value + rest)
+            overview[command] += 1
         else:
             amended_line.append(rest)
     return "".join(amended_line)
@@ -251,6 +261,7 @@ def group_lines(raw_lines: list[str], concordance: dict[str, list[str]]) -> tupl
             case Instruction.NEW_SECTION:
                 if len(current_sections) > 1:
                     section.insert(0, create_shared_description_message(current_sections, concordance))
+                    overview["EXTRA_sections"] += len(current_sections) - 1
                 for section_to_save in current_sections:
                     processed_text[section_to_save] = section
                 current_sections = command.details
@@ -260,9 +271,12 @@ def group_lines(raw_lines: list[str], concordance: dict[str, list[str]]) -> tupl
                 if command.details[0].lower() == "pub_date":
                     pub_date = command.details[1]
             case Instruction.UNKNOWN:
-                msg = "Unknown command used (check spelling?)"
+                msg = f"Unknown command used (check spelling?) {line}"
                 logging.warning(msg)
                 # raise UserWarning("Unknown command used (check spelling?)")
+        overview[command.order.name] += 1
+        if command.order != Instruction.NONE:
+            logging.info(f"{command.order.name} {f'-> {command.details}' if command.details else ''}")
     if section:
         for section_to_save in current_sections:
             processed_text[section_to_save] = section
@@ -270,8 +284,9 @@ def group_lines(raw_lines: list[str], concordance: dict[str, list[str]]) -> tupl
 
 
 def create_shared_description_message(current_sections: list[str], concordance: dict[str, list[str]]) -> str:
-    shared_blurb = " & ". join((f"{section} ({concordance[section][1]})" for section in current_sections))
-    message = f"[Description shared between items {shared_blurb}]"
+    # shared_blurb = " & ". join((f"{section} ({concordance[section][1]})" for section in current_sections))
+    shared_blurb = " & ". join((f"{section} ({concordance.get(section, ("","UNKNOWN"))[1]})" for section in current_sections))
+    message = f"[Description shared between {len(current_sections)} items: {shared_blurb}]"
     logging.info(message)
     return message
 
@@ -337,6 +352,18 @@ def prepare_for_csv(processed_text: dict[str, list[str]], concordance: dict[str,
     return output
 
 
+def overview_report() -> str:
+    report = "*" * 70 + "\n"
+    report += "\t**Overview of commands performed:\n"
+    report += f"\t**{overview}\n"
+    report += f"\t**Each section included a 'process' statement: {overview["NEW_SECTION"] == overview["PROCESS"]}\n"
+    report += f"\t**Total number of sections, including ones sharing same description = {overview["NEW_SECTION"] + overview["EXTRA_sections"]}\n"
+    report += "\t" + ("*" * 73)
+    return report
+
+
+
+
 
 
 
@@ -347,6 +374,7 @@ def main() -> None:
         csv_dir.mkdir()
     concordance = make_concordance("penny.concordance.xlsx")
     for source_file in text_dir.glob("*.txt"):
+        overview.clear()
         destination_file = csv_dir / f"{source_file.stem}.csv"
         batch_name = source_file.stem
         # published_date = "01/01/1992"
@@ -358,7 +386,8 @@ def main() -> None:
         csv_ready_text = prepare_for_csv(processed_text, concordance, published_date, batch_name)
         del processed_text
 
-        logging.info(f"Processed {len(csv_ready_text) - 1} sections from {source_file.name}." )
+        logging.info(overview_report())
+        logging.info(f"Processed {len(csv_ready_text) - 1} sections from {source_file.name}.\n\n" )
         write_csv(destination_file, csv_ready_text)
 
 if __name__ == "__main__":
