@@ -8,6 +8,7 @@ from enum import Enum, auto
 from dataclasses import dataclass
 # from typing import Iterable
 import logging
+import re
 
 logging.basicConfig(
     filename='textExtract.log',
@@ -162,6 +163,66 @@ def get_command(line: str) -> Command:
     return Command(order, detail)
 
 
+def parse_inline_command(part:str, concordance) -> tuple[str, str, str]:
+    """
+    returns (command, value, rest)
+    ** currently, only LINK:value is recognised:
+    where "LINK:No.56@_ is an..." ->
+        command: "LINK"
+        value: "No.56"
+        rest: " is an ..."
+    """
+    END_CMD = "@_"
+    tmp = part.split(END_CMD)
+
+    # NO COMMAND
+    if len(tmp) == 1:
+        rest = tmp[0]
+        command, value = "",""
+
+    # SINGLE COMMAND
+    else:
+        rest = tmp[1]
+        parsed_command = tmp[0].split(":")
+        if len(parsed_command) == 1:
+            command = parsed_command[0]
+            value = ""
+
+    # COMMAND + VALUE
+        else:
+            command, value = parsed_command
+    return (command.lower(), value, rest)
+
+
+def get_inline_commands(line:str, concordance) -> str:
+    START_CMD = "_@"
+    parts = line.split(START_CMD)
+    if len(parts) == 1:
+        return line
+    amended_line: list[str] = []
+    # the first command is always in the 2nd element of the split
+    if parts[0]:
+        amended_line.append(parts[0])
+    for part in parts[1:]:
+        command, value, rest = parse_inline_command(part, concordance)
+        if command:
+            match command:
+                case command if command == "link":
+                    # currently, links are ignored, but see this possibility:
+                    # number = re.sub(r"[^\d]", "", value)
+                    # if number:
+                    #     ref = concordance.get(number, ["", ""])[1]
+                    #     value += f" [{ref}]" if ref else ""
+                    amended_line.append(value + rest)
+                case _:
+                    # as are all inline commands currently!
+                    logging.warning(f"The command '{command}' is unknown.")
+                    amended_line.append(value + rest)
+        else:
+            amended_line.append(rest)
+    return "".join(amended_line)
+
+
 def group_lines(raw_lines: list[str], concordance: dict[str, list[str]]) -> tuple[dict[str, list[str]], str]:
     """Process the text from the source list and return a list of processed lines."""
     pub_date = ""
@@ -181,6 +242,7 @@ def group_lines(raw_lines: list[str], concordance: dict[str, list[str]]) -> tupl
                 if currently_ignoring:
                     continue
                 else:
+                    line = get_inline_commands(line, concordance)
                     section.append(line)
             case Instruction.IGNORE:
                 currently_ignoring = True
