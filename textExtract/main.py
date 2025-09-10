@@ -56,8 +56,9 @@ def read_lines(file_path: Path) -> list[str]:
     """Read lines from a file and return them as a list."""
     with file_path.open("r", encoding="utf-8") as file:
         raw_lines = file.readlines()
-    if ord(raw_lines[0][0]) == 65279:
-        raw_lines[0] = raw_lines[0][1:]
+    # if ord(raw_lines[0][0]) == 65279:
+    #     raw_lines[0] = raw_lines[0][1:]
+    raw_lines[0] = remove_bom(raw_lines[0])
     raw_lines = [line.strip() for line in raw_lines]
     return raw_lines
         # return file.readlines()
@@ -78,7 +79,13 @@ def write_csv(file_path: Path, data: list) -> None:
 
 def remove_bom(line: str) -> str:
     # return line[3:] if line.startswith(codecs.BOM_UTF8) else line
-    return line[3:] if line.startswith("\xFF\xFE") else line
+    # return line[3:] if line.startswith("\xFF\xFE") else line
+    # return line[3:]
+    if line.startswith("\xFF\xFE"):
+        logging.info("Removed BOM from start of file.")
+        return line[3:]
+    else:
+        return line
 
 
 # def read_csv(file_path: Path) -> list[str]:
@@ -153,12 +160,16 @@ def get_command(line: str) -> Command:
         match line:
             case line if line[0].isnumeric():
                 order = Instruction.NEW_SECTION
-                detail = line.split("&")
-            case line if line.startswith("IGNORE"):
+                # detail = line.split("&")
+                detail = [num for num in re.split(r"[& /,]", line) if num]
+            # case line if line.startswith("IGNORE"):
+            case line if re.match("ignore", line, re.I):
                 order = Instruction.IGNORE
-            case line if line.startswith("PROCESS"):
+            # case line if line.startswith("PROCESS"):
+            case line if re.match("process", line, re.I):
                 order = Instruction.PROCESS
-            case line if line.startswith("META:"):
+            # case line if line.startswith("META:"):
+            case line if re.match("meta", line, re.I):
                 order = Instruction.META
                 detail = line[5:].split("=")
             case _:
@@ -169,7 +180,39 @@ def get_command(line: str) -> Command:
     return Command(order, detail)
 
 
-def parse_inline_command(part:str, concordance) -> tuple[str, str, str]:
+def get_inline_commands(line:str, concordance) -> str:
+    START_CMD = "_@"
+    parts = line.split(START_CMD)
+    if len(parts) == 1:
+        return line
+    amended_line: list[str] = []
+    # the first command is always in the 2nd element of the split
+    if parts[0]:
+        amended_line.append(parts[0])
+    for part in parts[1:]:
+        # command, value, rest = parse_inline_command(part, concordance)
+        command, value, rest = parse_inline_command(part)
+        if command:
+            match command:
+                case command if command == "link":
+                    # currently, links are ignored, but see this possibility:
+                    # number = re.sub(r"[^\d]", "", value)
+                    # if number:
+                    #     ref = concordance.get(number, ["", ""])[1]
+                    #     value += f" [{ref}]" if ref else ""
+                    amended_line.append(value + rest)
+                case _:
+                    # as are all inline commands currently!
+                    logging.warning(f"The command '{command}' is unknown.")
+                    amended_line.append(value + rest)
+            overview[command] += 1
+        else:
+            amended_line.append(rest)
+    return "".join(amended_line)
+
+
+# def parse_inline_command(part:str, concordance) -> tuple[str, str, str]:
+def parse_inline_command(part:str) -> tuple[str, str, str]:
     """
     returns (command, value, rest)
     ** currently, only LINK:value is recognised:
@@ -203,36 +246,6 @@ def parse_inline_command(part:str, concordance) -> tuple[str, str, str]:
     return (command.lower(), value, rest)
 
 
-def get_inline_commands(line:str, concordance) -> str:
-    START_CMD = "_@"
-    parts = line.split(START_CMD)
-    if len(parts) == 1:
-        return line
-    amended_line: list[str] = []
-    # the first command is always in the 2nd element of the split
-    if parts[0]:
-        amended_line.append(parts[0])
-    for part in parts[1:]:
-        command, value, rest = parse_inline_command(part, concordance)
-        if command:
-            match command:
-                case command if command == "link":
-                    # currently, links are ignored, but see this possibility:
-                    # number = re.sub(r"[^\d]", "", value)
-                    # if number:
-                    #     ref = concordance.get(number, ["", ""])[1]
-                    #     value += f" [{ref}]" if ref else ""
-                    amended_line.append(value + rest)
-                case _:
-                    # as are all inline commands currently!
-                    logging.warning(f"The command '{command}' is unknown.")
-                    amended_line.append(value + rest)
-            overview[command] += 1
-        else:
-            amended_line.append(rest)
-    return "".join(amended_line)
-
-
 def group_lines(raw_lines: list[str], concordance: dict[str, list[str]]) -> tuple[dict[str, list[str]], str]:
     """Process the text from the source list and return a list of processed lines."""
     pub_date = ""
@@ -260,7 +273,7 @@ def group_lines(raw_lines: list[str], concordance: dict[str, list[str]]) -> tupl
                 currently_ignoring = False
             case Instruction.NEW_SECTION:
                 if len(current_sections) > 1:
-                    section.insert(0, create_shared_description_message(current_sections, concordance))
+                    # section.insert(0, create_shared_description_message(current_sections, concordance))
                     overview["EXTRA_sections"] += len(current_sections) - 1
                 for section_to_save in current_sections:
                     processed_text[section_to_save] = section
@@ -293,7 +306,7 @@ def create_shared_description_message(current_sections: list[str], concordance: 
 
 def prepare_for_csv(processed_text: dict[str, list[str]], concordance: dict[str, list[str]], published_date: str, import_identifier: str,) -> list[ExcelRow]:
     headings = (
-        "Object ID", # Museum+ id of the item described
+        "ID", # Museum+ id of the item described
         "Import identifier",    # name given to this batch operation
         "Type", # Always catalogue text
         "Sort", # Always '100' in case of multiple entries
@@ -305,7 +318,7 @@ def prepare_for_csv(processed_text: dict[str, list[str]], concordance: dict[str,
         # "Author",  # TODO: check this should be empty = 'author'
         # "Literature ID",    # id of the publication
         # "Exhibition",  # TODO: check this should be empty = 'exhibition'
-        "Title_or_ref",  # TODO: check this should be empty = 'title/ref. no.'
+        "Title / Ref. No.",  # TODO: check this should be empty = 'title/ref. no.'
         "Text",
         "Source",  # TODO: check this should be empty = 'source'
         "Notes"
