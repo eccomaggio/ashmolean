@@ -1,5 +1,17 @@
 To do:
-  check with Laura about the exact meaning of all of the fields - COMPLETED
+
+Ensure that it finds/outputs a pub date: OK (recorded in log)
+check that there are as many lines in the CSV as there are entries (nb. need to check that concordance contains all entries)
+entry 7 is missing - OK: that's because missing in concordance
+on PC, the BOM doesn't seem to be working; check it here. - OK on Mac, problem on PC
+Can we include Greek text? - TODO
+
+
+
+
+DONE:
+check with Laura about the exact meaning of all of the fields - COMPLETED
+also updated field names to match expected input
 
 create a test batch of 10 records -> Laura
 

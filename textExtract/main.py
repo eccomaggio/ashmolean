@@ -64,6 +64,20 @@ def read_lines(file_path: Path) -> list[str]:
         # return file.readlines()
 
 
+def remove_bom(line: str) -> str:
+    # print(f">>> start character={ord(line[0])} ({ord(line[0]) == 65279})")
+    if ord(line[0]) == 65279:
+        line = line[2:]
+        logging.info(f"Removed BOM from start of file. <{line[:10]}>")
+        # return line[1:]
+    # if line.startswith("\xFF\xFE"):
+    #     logging.info("Removed BOM from start of file.")
+    #     return line[3:]
+    else:
+        logging.error("No BOM found.")
+    return line
+
+
 def write_lines(file_path: Path, lines: list[str]) -> None:
     """Write a list of lines to a file."""
     with file_path.open("w", encoding="utf-8") as file:
@@ -75,17 +89,6 @@ def write_csv(file_path: Path, data: list) -> None:
     with file_path.open("w", encoding="utf-8", newline='') as file:
         csv_writer = writer(file)
         csv_writer.writerows(data)
-
-
-def remove_bom(line: str) -> str:
-    # return line[3:] if line.startswith(codecs.BOM_UTF8) else line
-    # return line[3:] if line.startswith("\xFF\xFE") else line
-    # return line[3:]
-    if line.startswith("\xFF\xFE"):
-        logging.info("Removed BOM from start of file.")
-        return line[3:]
-    else:
-        return line
 
 
 # def read_csv(file_path: Path) -> list[str]:
@@ -293,6 +296,10 @@ def group_lines(raw_lines: list[str], concordance: dict[str, list[str]]) -> tupl
     if section:
         for section_to_save in current_sections:
             processed_text[section_to_save] = section
+    if pub_date:
+        logging.info(f"Pub date: {pub_date}")
+    else:
+        logging.critical("No publication date found!")
     return (processed_text, pub_date)
 
 
@@ -315,9 +322,6 @@ def prepare_for_csv(processed_text: dict[str, list[str]], concordance: dict[str,
         "Status",   # Always '05 Published'
         "Language",
         "Published Date",   # DD/MM/YYYY
-        # "Author",  # TODO: check this should be empty = 'author'
-        # "Literature ID",    # id of the publication
-        # "Exhibition",  # TODO: check this should be empty = 'exhibition'
         "Title / Ref. No.",  # TODO: check this should be empty = 'title/ref. no.'
         "Text",
         "Source",  # TODO: check this should be empty = 'source'
@@ -327,8 +331,6 @@ def prepare_for_csv(processed_text: dict[str, list[str]], concordance: dict[str,
     object_id: str
     audience = "public"
     purpose = ""
-    # author = ""
-    # exhibition = ""
     title = ""
     notes = ""
     source = ""
@@ -339,29 +341,27 @@ def prepare_for_csv(processed_text: dict[str, list[str]], concordance: dict[str,
     for num, lines in processed_text.items():
         object_from_concordance = concordance.get(num, None)
         if not object_from_concordance:
-            continue
+            logging.critical(f"No object id found in concordance for record {num}.")
         else:
+            overview["records_output"] += 1
             object_id = object_from_concordance[0]
-        _sort = "100"
-        text = "\n\n".join(lines)
-        output.append((
-            object_id,
-            import_identifier,
-            _type,
-            _sort,
-            purpose,
-            audience,
-            status,
-            language,
-            published_date,
-            # author,
-            # literature_id,
-            # exhibition,
-            title,
-            text,
-            source,
-            notes,
-        ))
+            _sort = "100"
+            text = "\n\n".join(lines)
+            output.append((
+                object_id,
+                import_identifier,
+                _type,
+                _sort,
+                purpose,
+                audience,
+                status,
+                language,
+                published_date,
+                title,
+                text,
+                source,
+                notes,
+            ))
     return output
 
 
@@ -370,7 +370,8 @@ def overview_report() -> str:
     report += "\t**Overview of commands performed:\n"
     report += f"\t**{overview}\n"
     report += f"\t**Each section included a 'process' statement: {overview["NEW_SECTION"] == overview["PROCESS"]}\n"
-    report += f"\t**Total number of sections, including ones sharing same description = {overview["NEW_SECTION"] + overview["EXTRA_sections"]}\n"
+    report += f"\t**Total number of sections processed, including ones sharing same description = {overview["NEW_SECTION"] + overview["EXTRA_sections"]}\n"
+    report += f"\t**Total number of sections output to csv = {overview["records_output"]}\n"
     report += "\t" + ("*" * 73)
     return report
 
@@ -400,7 +401,7 @@ def main() -> None:
         del processed_text
 
         logging.info(overview_report())
-        logging.info(f"Processed {len(csv_ready_text) - 1} sections from {source_file.name}.\n\n" )
+        # logging.info(f"Processed {len(csv_ready_text) - 1} sections from {source_file.name}.\n\n" )
         write_csv(destination_file, csv_ready_text)
 
 if __name__ == "__main__":
