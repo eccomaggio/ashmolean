@@ -23,8 +23,8 @@ INFO:Pub date: 01/01/1992
 CRITICAL:No object id found in concordance for record 7.
 INFO:**********************************************************************
 	**Overview of commands performed:
-	**defaultdict(<class 'int'>, {'META': 1, 'NEW_SECTION': 9, 'PROCESS': 9, 'link': 4, 'NONE': 45, 'EXTRA_sections': 1, 'records_output': 9})
 	**Each section included a 'process' statement: True
 	**Total number of sections processed, including ones sharing same description = 10
 	**Total number of sections output to csv = 9
+	**Total number of sections without links in concordance: 1 (record no.: 7)
 	*************************************************************************

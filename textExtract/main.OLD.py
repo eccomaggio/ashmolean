@@ -5,16 +5,14 @@ from openpyxl import load_workbook  # type: ignore[import]
 # import datetime
 # import pytz
 from enum import Enum, auto
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 # from typing import Iterable
 import logging
 import re
 from collections import defaultdict
 # from pprint import pprint
 
-# overview: defaultdict[str, int] = defaultdict(int)
-# # overview['missing_from_concordance'] = []
-# overview_missing: defaultdict[str, list] = defaultdict(lambda: [])
+overview: defaultdict[str, int] = defaultdict(int)
 
 logging.basicConfig(
     filename='textExtract.log',
@@ -24,14 +22,6 @@ logging.basicConfig(
     filemode="w",
     encoding="utf-8",
 )
-
-
-@dataclass
-class Overview:
-    count: defaultdict[str, int] = field(default_factory=lambda: defaultdict(int))
-    missing: defaultdict[str, list[int]] = field(default_factory=lambda: defaultdict(list))
-
-overview = Overview()
 
 
 class Instruction(Enum):
@@ -218,7 +208,7 @@ def get_inline_commands(line:str, concordance) -> str:
                     # as are all inline commands currently!
                     logging.warning(f"The command '{command}' is unknown.")
                     amended_line.append(value + rest)
-            overview.count[command] += 1
+            overview[command] += 1
         else:
             amended_line.append(rest)
     return "".join(amended_line)
@@ -287,7 +277,7 @@ def group_lines(raw_lines: list[str], concordance: dict[str, list[str]]) -> tupl
             case Instruction.NEW_SECTION:
                 if len(current_sections) > 1:
                     # section.insert(0, create_shared_description_message(current_sections, concordance))
-                    overview.count["EXTRA_sections"] += len(current_sections) - 1
+                    overview["EXTRA_sections"] += len(current_sections) - 1
                 for section_to_save in current_sections:
                     processed_text[section_to_save] = section
                 current_sections = command.details
@@ -300,7 +290,7 @@ def group_lines(raw_lines: list[str], concordance: dict[str, list[str]]) -> tupl
                 msg = f"Unknown command used (check spelling?) {line}"
                 logging.warning(msg)
                 # raise UserWarning("Unknown command used (check spelling?)")
-        overview.count[command.order.name] += 1
+        overview[command.order.name] += 1
         if command.order != Instruction.NONE:
             logging.info(f"{command.order.name} {f'-> {command.details}' if command.details else ''}")
     if section:
@@ -313,110 +303,110 @@ def group_lines(raw_lines: list[str], concordance: dict[str, list[str]]) -> tupl
     return (processed_text, pub_date)
 
 
-def process(raw_lines: list[str], concordance: dict[str, list[str]]) -> tuple[dict[str, list[str]], str]:
-    """
-    This will replace group_lines(), get_command(), get_inline_commands() & parse_inline_command()
-    """
-    pub_date = ""
-    processed_text: dict[str, list[str]] = {}
-    section: list[str] = []
-    currently_ignoring = False
-    current_sections: list[str] = []
-    # if ord(raw_lines[0][0]) == 65279:
-    #     raw_lines[0] = raw_lines[0][1:]
-    for line in raw_lines:
-        # line = line.strip()
-        if not line:
-            continue
-        phrases = identify_commands(line)
-        for cmd, value, rest in phrases:
-            if cmd:
-                if value:
-                    ## simple commands
-                    pass
-                else:
-                    ## compound commands
-                    pass
-            else:
-                section.append(rest)
-    if section:
-        for section_to_save in current_sections:
-            processed_text[section_to_save] = section
-    if pub_date:
-        logging.info(f"Pub date: {pub_date}")
-    else:
-        logging.critical("No publication date found!")
-    return (processed_text, pub_date)
-        ## finish this: it treats inline & full line commands equally; need to change markup in txt to be @@CMD(@@) for all commands
-    #     command: Command = get_command(line)
-    #     match command.order:
-    #         case Instruction.NONE:
-    #             if currently_ignoring:
-    #                 continue
-    #             else:
-    #                 line = get_inline_commands(line, concordance)
-    #                 section.append(line)
-    #         case Instruction.IGNORE:
-    #             currently_ignoring = True
-    #         case Instruction.PROCESS:
-    #             currently_ignoring = False
-    #         case Instruction.NEW_SECTION:
-    #             if len(current_sections) > 1:
-    #                 # section.insert(0, create_shared_description_message(current_sections, concordance))
-    #                 overview["EXTRA_sections"] += len(current_sections) - 1
-    #             for section_to_save in current_sections:
-    #                 processed_text[section_to_save] = section
-    #             current_sections = command.details
-    #             currently_ignoring = True ## ignore text at beginning of section
-    #             section = []
-    #         case Instruction.META:
-    #             if command.details[0].lower() == "pub_date":
-    #                 pub_date = command.details[1]
-    #         case Instruction.UNKNOWN:
-    #             msg = f"Unknown command used (check spelling?) {line}"
-    #             logging.warning(msg)
-    #             # raise UserWarning("Unknown command used (check spelling?)")
-    #     overview[command.order.name] += 1
-    #     if command.order != Instruction.NONE:
-    #         logging.info(f"{command.order.name} {f'-> {command.details}' if command.details else ''}")
-    # if section:
-    #     for section_to_save in current_sections:
-    #         processed_text[section_to_save] = section
-    # if pub_date:
-    #     logging.info(f"Pub date: {pub_date}")
-    # else:
-    #     logging.critical("No publication date found!")
-    # return (processed_text, pub_date)
+# def process(raw_lines: list[str], concordance: dict[str, list[str]]) -> tuple[dict[str, list[str]], str]:
+#     """
+#     This will replace group_lines(), get_command(), get_inline_commands() & parse_inline_command()
+#     """
+#     pub_date = ""
+#     processed_text: dict[str, list[str]] = {}
+#     section: list[str] = []
+#     currently_ignoring = False
+#     current_sections: list[str] = []
+#     # if ord(raw_lines[0][0]) == 65279:
+#     #     raw_lines[0] = raw_lines[0][1:]
+#     for line in raw_lines:
+#         # line = line.strip()
+#         if not line:
+#             continue
+#         phrases = identify_commands(line)
+#         for cmd, value, rest in phrases:
+#             if cmd:
+#                 if value:
+#                     ## simple commands
+#                     pass
+#                 else:
+#                     ## compound commands
+#                     pass
+#             else:
+#                 section.append(rest)
+#     if section:
+#         for section_to_save in current_sections:
+#             processed_text[section_to_save] = section
+#     if pub_date:
+#         logging.info(f"Pub date: {pub_date}")
+#     else:
+#         logging.critical("No publication date found!")
+#     return (processed_text, pub_date)
+#         ## finish this: it treats inline & full line commands equally; need to change markup in txt to be @@CMD(@@) for all commands
+#     #     command: Command = get_command(line)
+#     #     match command.order:
+#     #         case Instruction.NONE:
+#     #             if currently_ignoring:
+#     #                 continue
+#     #             else:
+#     #                 line = get_inline_commands(line, concordance)
+#     #                 section.append(line)
+#     #         case Instruction.IGNORE:
+#     #             currently_ignoring = True
+#     #         case Instruction.PROCESS:
+#     #             currently_ignoring = False
+#     #         case Instruction.NEW_SECTION:
+#     #             if len(current_sections) > 1:
+#     #                 # section.insert(0, create_shared_description_message(current_sections, concordance))
+#     #                 overview["EXTRA_sections"] += len(current_sections) - 1
+#     #             for section_to_save in current_sections:
+#     #                 processed_text[section_to_save] = section
+#     #             current_sections = command.details
+#     #             currently_ignoring = True ## ignore text at beginning of section
+#     #             section = []
+#     #         case Instruction.META:
+#     #             if command.details[0].lower() == "pub_date":
+#     #                 pub_date = command.details[1]
+#     #         case Instruction.UNKNOWN:
+#     #             msg = f"Unknown command used (check spelling?) {line}"
+#     #             logging.warning(msg)
+#     #             # raise UserWarning("Unknown command used (check spelling?)")
+#     #     overview[command.order.name] += 1
+#     #     if command.order != Instruction.NONE:
+#     #         logging.info(f"{command.order.name} {f'-> {command.details}' if command.details else ''}")
+#     # if section:
+#     #     for section_to_save in current_sections:
+#     #         processed_text[section_to_save] = section
+#     # if pub_date:
+#     #     logging.info(f"Pub date: {pub_date}")
+#     # else:
+#     #     logging.critical("No publication date found!")
+#     # return (processed_text, pub_date)
 
 
-def identify_commands(line: str) -> list[tuple[str, str, str]]:
-  simple_commands = ["process", "ignore"]   # "@@CMD\n" or "@@CMD@@..."
-  compound_commands = ["meta", "link"]      # "@@CMD:value@@"
-  open_cmd = False
-  output = []
-  pre_parsed = [el for el in re.split(r"(@@)", line) if el]
-  ## re group preserves "@@": allows it to be matched with command to distinguish "PROCESS" (text) vs "@@PROCESS" (cmd)
-  for phrase in pre_parsed:
-    cmd, value, rest = "","",""
-    if phrase == "@@":
-      open_cmd = not open_cmd
-      continue
-    if open_cmd:
-      if phrase.lower() in simple_commands:
-        cmd = phrase
-      else:
-        tmp = phrase.split(":")
-        if len(tmp) == 1:
-          rest = phrase
-        else:
-          cmd, value = phrase.split(":")
-          if cmd.lower() not in compound_commands:
-            rest = phrase
-            cmd, value = "", ""
-    else:
-      rest = phrase
-    output.append((cmd, value, rest))
-  return output
+# def identify_commands(line: str) -> list[tuple[str, str, str]]:
+#   simple_commands = ["process", "ignore"]   # "@@CMD\n" or "@@CMD@@..."
+#   compound_commands = ["meta", "link"]      # "@@CMD:value@@"
+#   open_cmd = False
+#   output = []
+#   pre_parsed = [el for el in re.split(r"(@@)", line) if el]
+#   ## re group preserves "@@": allows it to be matched with command to distinguish "PROCESS" (text) vs "@@PROCESS" (cmd)
+#   for phrase in pre_parsed:
+#     cmd, value, rest = "","",""
+#     if phrase == "@@":
+#       open_cmd = not open_cmd
+#       continue
+#     if open_cmd:
+#       if phrase.lower() in simple_commands:
+#         cmd = phrase
+#       else:
+#         tmp = phrase.split(":")
+#         if len(tmp) == 1:
+#           rest = phrase
+#         else:
+#           cmd, value = phrase.split(":")
+#           if cmd.lower() not in compound_commands:
+#             rest = phrase
+#             cmd, value = "", ""
+#     else:
+#       rest = phrase
+#     output.append((cmd, value, rest))
+#   return output
 
 
 def create_shared_description_message(current_sections: list[str], concordance: dict[str, list[str]]) -> str:
@@ -458,10 +448,8 @@ def prepare_for_csv(processed_text: dict[str, list[str]], concordance: dict[str,
         object_from_concordance = concordance.get(num, None)
         if not object_from_concordance:
             logging.critical(f"No object id found in concordance for record {num}.")
-            overview.missing["from_concordance"].append(int(num))
-            # overview["from_concordance"].append(num)
         else:
-            overview.count["records_output"] += 1
+            overview["records_output"] += 1
             object_id = object_from_concordance[0]
             _sort = "100"
             text = "\n\n".join(lines)
@@ -486,12 +474,10 @@ def prepare_for_csv(processed_text: dict[str, list[str]], concordance: dict[str,
 def overview_report() -> str:
     report = "*" * 70 + "\n"
     report += "\t**Overview of commands performed:\n"
-    report += f"\t**Each section included a 'process' statement: {overview.count["NEW_SECTION"] == overview.count["PROCESS"]}\n"
-    report += f"\t**Total number of sections processed, including ones sharing same description = {overview.count["NEW_SECTION"] + overview.count["EXTRA_sections"]}\n"
-    report += f"\t**Total number of sections output to csv = {overview.count["records_output"]}\n"
-    missing = overview.missing["from_concordance"]
-    missing_details = f" (record no.{"s" if len(missing) > 1 else ""}: {', '.join([str(el) for el in missing])})" if len(missing) else ""
-    report += f"\t**Total number of sections without links in concordance: {len(missing)}{missing_details}\n"
+    report += f"\t**{overview}\n"
+    report += f"\t**Each section included a 'process' statement: {overview["NEW_SECTION"] == overview["PROCESS"]}\n"
+    report += f"\t**Total number of sections processed, including ones sharing same description = {overview["NEW_SECTION"] + overview["EXTRA_sections"]}\n"
+    report += f"\t**Total number of sections output to csv = {overview["records_output"]}\n"
     report += "\t" + ("*" * 73)
     return report
 
@@ -508,8 +494,7 @@ def main() -> None:
         csv_dir.mkdir()
     concordance = make_concordance("penny.concordance.xlsx")
     for source_file in text_dir.glob("*.txt"):
-        overview.count.clear()
-        overview.missing.clear()
+        overview.clear()
         destination_file = csv_dir / f"{source_file.stem}.csv"
         batch_name = source_file.stem
         # published_date = "01/01/1992"
