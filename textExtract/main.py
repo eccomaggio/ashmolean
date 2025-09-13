@@ -15,10 +15,6 @@ from collections import defaultdict
 
 # from pprint import pprint
 
-# overview: defaultdict[str, int] = defaultdict(int)
-# # overview['missing_from_concordance'] = []
-# overview_missing: defaultdict[str, list] = defaultdict(lambda: [])
-
 logging.basicConfig(
     filename="textExtract.log",
     level=logging.INFO,
@@ -35,7 +31,6 @@ class Overview:
     missing: defaultdict[str, list[int]] = field(
         default_factory=lambda: defaultdict(list)
     )
-
 
 overview = Overview()
 
@@ -156,7 +151,6 @@ def write_csv(file_path: Path, data: list) -> None:
         csv_writer.writerows(data)
 
 
-# def read_csv(file_path: Path) -> list[str]:
 def read_csv(file_path: Path) -> list[list[str]]:
     """Read a CSV file and return its content as a list of lists."""
     with file_path.open("r", encoding="utf-8") as file:
@@ -276,36 +270,23 @@ def chunk_by_command(line: str) -> list[tuple[str, Command, str]]:
 def parse_command(phrase: str) -> tuple[str, Command, str]:
     simple_commands = ["process", "ignore"]  # "@@CMD\n" or "@@CMD@@..."
     compound_commands = ["meta", "link", "new"]  # "@@CMD:value@@"
-    result: tuple[str, Command, str]
-    # _type = ""
-    # cmd = Command("", [])
-    # other = ""
+    result: tuple[str, Command, str]    ## type, command, other
     if phrase.lower() in simple_commands:
-        # cmd.verb = phrase.lower()
-        # _type = "V"
         result = ("V", Command(phrase.lower(), []), "")
+    elif re.search(r"^\d[\d& /,]*$", phrase):
+        ## to catch alternative short form @@1&2 (= @@NEW:1&2)
+        result = ("VO", Command("new", [phrase]), "")
     else:
         verb_object = phrase.split(":")
         if len(verb_object) == 1:
-            # _type = "unknown"
-            # other = phrase
             result = ("unknown", Command("", []), "")
         else:
-            # cmd.verb, raw_object = verb_object
-            # cmd.object_list = raw_object.split("=")
-            # cmd.verb = cmd.verb.lower()
-            # if cmd.verb in compound_commands:
             verb, raw_object = verb_object
-            # object_list = raw_object.split("=")
             verb = verb.lower()
             if verb in compound_commands:
-                # _type = "VO"
                 result = ("VO", Command(verb, raw_object.split("=")), "")
             else:
-                # _type = "none"
-                # cmd.verb, cmd.object_list, other = "", [], phrase
                 result = ("none", Command("", []), phrase)
-    # return (_type, cmd, other)
     return result
 
 
@@ -318,22 +299,15 @@ def process_verb(cmd: Command, content: Content) -> Content:
         case "unknown":
             msg = f"unknown verb ({cmd.object_list})"
             logging.warning(msg)
-            # print(msg)
-    # content.line += f"**{cmd.verb}**"
+    overview.count[cmd.verb] += 1
     return content
 
 
 def process_verb_object(cmd: Command, content: Content, concordance) -> Content:
-    # if content.currently_ignoring:
-    #     if cmd.verb == "new":
-    #         content.currently_ignoring = False
-    #     else:
-            # return content
     match cmd.verb:
         case "new":
             if (key_count := len(content.current_section_keys)) > 1:
                 overview.count["EXTRA_sections"] += key_count - 1
-                # print(f"EXTRA_sections {key_count - 1}")
             new_section_keys = [
                 el for el in re.split(r"[\s&,]", cmd.object_list[0]) if el
             ]
@@ -355,19 +329,15 @@ def process_verb_object(cmd: Command, content: Content, concordance) -> Content:
             #     ref = concordance.get(number, ["", ""])[1]
             #     content.line = f" [{ref}]" if ref else ""
         case _:
-            # logging.warning(f"The command '{command}' is unknown.")
             msg = f"The command '{cmd.verb}' is unknown."
             logging.warning(msg)
-            # content.line = str(cmd.object_list)
-
-        # overview.count[command] += 1
+    overview.count[cmd.verb] += 1
     return content
 
 
 def create_shared_description_message(
     current_sections: list[str], concordance: dict[str, list[str]]
 ) -> str:
-    # shared_blurb = " & ". join((f"{section} ({concordance[section][1]})" for section in current_sections))
     shared_blurb = " & ".join(
         (
             f"{section} ({concordance.get(section, ("","UNKNOWN"))[1]})"
@@ -445,18 +415,21 @@ def prepare_for_csv(
 
 
 def overview_report() -> str:
+    # print(overview.count)
+    # print(overview.missing)
     report = "*" * 70 + "\n"
-    report += "\t**Overview of commands performed:\n"
-    report += f"\t**Each section included a 'process' statement: {overview.count["NEW_SECTION"] == overview.count["PROCESS"]}\n"
-    report += f"\t**Total number of sections processed, including ones sharing same description = {overview.count["NEW_SECTION"] + overview.count["EXTRA_sections"]}\n"
-    report += f"\t**Total number of sections output to csv = {overview.count["records_output"]}\n"
+    report += "\t** Overview of commands performed:\n"
+    report += f"\t** {", ".join([f"{key}={val}" for key, val in overview.count.items()])}\n"
+    report += f"\t** Each section included a 'process' statement: {overview.count["new"] == overview.count["process"]}\n"
+    report += f"\t** Total number of sections processed, including ones sharing same description = {overview.count["new"] + overview.count["EXTRA_sections"]}\n"
+    report += f"\t** Total number of sections output to csv = {overview.count["records_output"]}\n"
     missing = overview.missing["from_concordance"]
     missing_details = (
         f" (record no.{"s" if len(missing) > 1 else ""}: {', '.join([str(el) for el in missing])})"
         if len(missing)
         else ""
     )
-    report += f"\t**Total number of sections without links in concordance: {len(missing)}{missing_details}\n"
+    report += f"\t** Total number of sections without links in concordance: {len(missing)}{missing_details}\n"
     report += "\t" + ("*" * 73)
     return report
 
@@ -472,23 +445,14 @@ def main() -> None:
         overview.missing.clear()
         destination_file = csv_dir / f"{source_file.stem}.csv"
         batch_name = source_file.stem
-        # published_date = "01/01/1992"
-
         logging.info(
             f"Reading from {source_file.name} and writing to {destination_file.name}..."
         )
         raw_lines: list[str] = read_lines(source_file)
-        # processed_text, published_date = process(raw_lines, concordance)
         content = process(raw_lines, concordance)
         del raw_lines
         csv_ready_text = prepare_for_csv(content, concordance, batch_name)
-        # csv_ready_text = prepare_for_csv(
-        #     processed_text, concordance, published_date, batch_name
-        # )
-        # del processed_text
-
         logging.info(overview_report())
-        # logging.info(f"Processed {len(csv_ready_text) - 1} sections from {source_file.name}.\n\n" )
         write_csv(destination_file, csv_ready_text)
 
 
