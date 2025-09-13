@@ -2,14 +2,17 @@ from pathlib import Path
 from csv import reader, writer
 import argparse
 from openpyxl import load_workbook  # type: ignore[import]
+
 # import datetime
 # import pytz
 from enum import Enum, auto
 from dataclasses import dataclass, field
+
 # from typing import Iterable
 import logging
 import re
 from collections import defaultdict
+
 # from pprint import pprint
 
 # overview: defaultdict[str, int] = defaultdict(int)
@@ -17,10 +20,10 @@ from collections import defaultdict
 # overview_missing: defaultdict[str, list] = defaultdict(lambda: [])
 
 logging.basicConfig(
-    filename='textExtract.log',
+    filename="textExtract.log",
     level=logging.INFO,
     # format='%(asctime)s %(levelname)s:%(message)s'
-    format='%(levelname)s:%(message)s',
+    format="%(levelname)s:%(message)s",
     filemode="w",
     encoding="utf-8",
 )
@@ -29,24 +32,62 @@ logging.basicConfig(
 @dataclass
 class Overview:
     count: defaultdict[str, int] = field(default_factory=lambda: defaultdict(int))
-    missing: defaultdict[str, list[int]] = field(default_factory=lambda: defaultdict(list))
+    missing: defaultdict[str, list[int]] = field(
+        default_factory=lambda: defaultdict(list)
+    )
+
 
 overview = Overview()
 
 
-class Instruction(Enum):
-    NONE = auto()
-    NEW_SECTION = auto()
-    PROCESS = auto()
-    IGNORE = auto()
-    META = auto()
-    UNKNOWN = auto()
+class Content:
+    def __init__(self, pd: str, ps: dict, cl: list, line: str, csk: list, ci=True):
+        self.pub_date: str = pd
+        self.processed_sections: dict[str, list[str]] = ps
+        self.current_lines: list[str] = cl
+        self.line: str = line
+        self.current_section_keys: list[str] = csk
+        self.currently_ignoring: bool = ci
+
+    def update_processed_sections(self):
+        for key in self.current_section_keys:
+            self.processed_sections[key] = self.current_lines
+        self.current_lines = []
+        self.current_section_keys = []
+
+    def start_new_section(self, new_section_keys: list[str]):
+        self.update_processed_sections()
+        self.current_section_keys = new_section_keys
+        self.currently_ignoring = True
+
+    def update_current_lines(self):
+        if self.line:
+            self.current_lines.append(self.line)
+            self.line = ""
+
+    def add_to_line(self, part:str):
+        # print(f">>>> {part[:50]}, {self.currently_ignoring}")
+        if not self.currently_ignoring:
+            self.line += part
 
 
+# class Instruction(Enum):
+#     NONE = auto()
+#     NEW_SECTION = auto()
+#     PROCESS = auto()
+#     IGNORE = auto()
+#     META = auto()
+#     UNKNOWN = auto()
+
+
+# @dataclass
+# class Command:
+#     order: Instruction
+#     details: list[str]
 @dataclass
 class Command:
-    order: Instruction
-    details: list[str]
+    verb: str
+    object_list: list[str]
 
 
 type ExcelRow = tuple[str, str, str, str, str, str, str, str, str, str, str, str, str]
@@ -55,9 +96,23 @@ type ExcelRow = tuple[str, str, str, str, str, str, str, str, str, str, str, str
 def argument_parser() -> tuple[Path, Path, Path]:
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(description="Process some text files.")
-    parser.add_argument("-s", "--source", type=Path, default=Path("input.txt"), help="Source file path")
-    parser.add_argument("-o", "--output", type=Path, default=Path("output.csv"), help="Destination file path")
-    parser.add_argument("-c", "--concordance", type=Path, default=Path("concordance.xlsx"), help="Concordance file path")
+    parser.add_argument(
+        "-s", "--source", type=Path, default=Path("input.txt"), help="Source file path"
+    )
+    parser.add_argument(
+        "-o",
+        "--output",
+        type=Path,
+        default=Path("output.csv"),
+        help="Destination file path",
+    )
+    parser.add_argument(
+        "-c",
+        "--concordance",
+        type=Path,
+        default=Path("concordance.xlsx"),
+        help="Concordance file path",
+    )
     args = parser.parse_args()
     return (args.source, args.output, args.concordance)
 
@@ -71,7 +126,7 @@ def read_lines(file_path: Path) -> list[str]:
     raw_lines[0] = remove_bom(raw_lines[0])
     raw_lines = [line.strip() for line in raw_lines]
     return raw_lines
-        # return file.readlines()
+    # return file.readlines()
 
 
 def remove_bom(line: str) -> str:
@@ -96,7 +151,7 @@ def write_lines(file_path: Path, lines: list[str]) -> None:
 
 def write_csv(file_path: Path, data: list) -> None:
     """Write a list of lists to a CSV file."""
-    with file_path.open("w", encoding="utf-8", newline='') as file:
+    with file_path.open("w", encoding="utf-8", newline="") as file:
         csv_writer = writer(file)
         csv_writer.writerows(data)
 
@@ -165,284 +220,187 @@ def normalise_concordance(raw: list[list[str]]) -> dict[str, list[str]]:
     return concordance
 
 
-def get_command(line: str) -> Command:
-    order = Instruction.NONE
-    detail = []
-    if line.startswith("@@"):
-        line = line[2:].strip()
-        match line:
-            case line if line[0].isnumeric():
-                order = Instruction.NEW_SECTION
-                # detail = line.split("&")
-                detail = [num for num in re.split(r"[& /,]", line) if num]
-            # case line if line.startswith("IGNORE"):
-            case line if re.match("ignore", line, re.I):
-                order = Instruction.IGNORE
-            # case line if line.startswith("PROCESS"):
-            case line if re.match("process", line, re.I):
-                order = Instruction.PROCESS
-            # case line if line.startswith("META:"):
-            case line if re.match("meta", line, re.I):
-                order = Instruction.META
-                detail = line[5:].split("=")
-            case _:
-                order = Instruction.UNKNOWN
-                detail = [line]
-        # if order != Instruction.NONE:
-        #     logging.info(f"{order.name} {f'-> {detail}' if detail else ''}")
-    return Command(order, detail)
-
-
-def get_inline_commands(line:str, concordance) -> str:
-    START_CMD = "_@"
-    parts = line.split(START_CMD)
-    if len(parts) == 1:
-        return line
-    amended_line: list[str] = []
-    # the first command is always in the 2nd element of the split
-    if parts[0]:
-        amended_line.append(parts[0])
-    for part in parts[1:]:
-        # command, value, rest = parse_inline_command(part, concordance)
-        command, value, rest = parse_inline_command(part)
-        if command:
-            match command:
-                case command if command == "link":
-                    # currently, links are ignored, but see this possibility:
-                    # number = re.sub(r"[^\d]", "", value)
-                    # if number:
-                    #     ref = concordance.get(number, ["", ""])[1]
-                    #     value += f" [{ref}]" if ref else ""
-                    amended_line.append(value + rest)
-                case _:
-                    # as are all inline commands currently!
-                    logging.warning(f"The command '{command}' is unknown.")
-                    amended_line.append(value + rest)
-            overview.count[command] += 1
-        else:
-            amended_line.append(rest)
-    return "".join(amended_line)
-
-
-# def parse_inline_command(part:str, concordance) -> tuple[str, str, str]:
-def parse_inline_command(part:str) -> tuple[str, str, str]:
-    """
-    returns (command, value, rest)
-    ** currently, only LINK:value is recognised:
-    where "LINK:No.56@_ is an..." ->
-        command: "LINK"
-        value: "No.56"
-        rest: " is an ..."
-    """
-    END_CMD = "@_"
-    tmp = part.split(END_CMD)
-
-    # NO COMMAND
-    if len(tmp) == 1:
-        rest = tmp[0]
-        command, value = "",""
-        msg = f"** Unterminated command: \"{rest}\""
-        logging.critical(msg)
-        print(msg)
-
-    # SINGLE COMMAND
-    else:
-        rest = tmp[1]
-        parsed_command = tmp[0].split(":")
-        if len(parsed_command) == 1:
-            command = parsed_command[0]
-            value = ""
-
-    # COMMAND + VALUE
-        else:
-            command, value = parsed_command
-    return (command.lower(), value, rest)
-
-
-def group_lines(raw_lines: list[str], concordance: dict[str, list[str]]) -> tuple[dict[str, list[str]], str]:
-    """Process the text from the source list and return a list of processed lines."""
-    pub_date = ""
-    processed_text: dict[str, list[str]] = {}
-    section: list[str] = []
-    currently_ignoring = False
-    current_sections: list[str] = []
-    # if ord(raw_lines[0][0]) == 65279:
-    #     raw_lines[0] = raw_lines[0][1:]
-    for line in raw_lines:
-        # line = line.strip()
-        if not line:
-            continue
-        command: Command = get_command(line)
-        match command.order:
-            case Instruction.NONE:
-                if currently_ignoring:
-                    continue
-                else:
-                    line = get_inline_commands(line, concordance)
-                    section.append(line)
-            case Instruction.IGNORE:
-                currently_ignoring = True
-            case Instruction.PROCESS:
-                currently_ignoring = False
-            case Instruction.NEW_SECTION:
-                if len(current_sections) > 1:
-                    # section.insert(0, create_shared_description_message(current_sections, concordance))
-                    overview.count["EXTRA_sections"] += len(current_sections) - 1
-                for section_to_save in current_sections:
-                    processed_text[section_to_save] = section
-                current_sections = command.details
-                currently_ignoring = True ## ignore text at beginning of section
-                section = []
-            case Instruction.META:
-                if command.details[0].lower() == "pub_date":
-                    pub_date = command.details[1]
-            case Instruction.UNKNOWN:
-                msg = f"Unknown command used (check spelling?) {line}"
-                logging.warning(msg)
-                # raise UserWarning("Unknown command used (check spelling?)")
-        overview.count[command.order.name] += 1
-        if command.order != Instruction.NONE:
-            logging.info(f"{command.order.name} {f'-> {command.details}' if command.details else ''}")
-    if section:
-        for section_to_save in current_sections:
-            processed_text[section_to_save] = section
-    if pub_date:
-        logging.info(f"Pub date: {pub_date}")
-    else:
-        logging.critical("No publication date found!")
-    return (processed_text, pub_date)
-
-
-def process(raw_lines: list[str], concordance: dict[str, list[str]]) -> tuple[dict[str, list[str]], str]:
+def process(raw_lines: list[str], concordance: dict[str, list[str]]) -> Content:
     """
     This will replace group_lines(), get_command(), get_inline_commands() & parse_inline_command()
+    This sorts the lines (paragraphs) into sections
+    filters out lines that aren't needed
+    and expands any inline commands
     """
-    pub_date = ""
-    processed_text: dict[str, list[str]] = {}
-    section: list[str] = []
-    currently_ignoring = False
-    current_sections: list[str] = []
-    # if ord(raw_lines[0][0]) == 65279:
-    #     raw_lines[0] = raw_lines[0][1:]
-    for line in raw_lines:
-        # line = line.strip()
-        if not line:
+    content: Content = Content("", {}, [], "", [])
+    for raw_line in raw_lines:
+        if not raw_line:
             continue
-        phrases = identify_commands(line)
-        for cmd, value, rest in phrases:
-            if cmd:
-                if value:
-                    ## simple commands
-                    pass
-                else:
-                    ## compound commands
-                    pass
-            else:
-                section.append(rest)
-    if section:
-        for section_to_save in current_sections:
-            processed_text[section_to_save] = section
-    if pub_date:
-        logging.info(f"Pub date: {pub_date}")
+        phrases = chunk_by_command(raw_line)
+        for _type, cmd, other in phrases:
+            match _type:
+                case "none":
+                    content.add_to_line(other)
+                case "V":
+                    content = process_verb(cmd, content)
+                case "VO":
+                    content = process_verb_object(cmd, content, concordance)
+                case "unknown":
+                    msg = f">>>> UNKNOWN command: {cmd}"
+                    logging.error(msg)
+        content.update_current_lines()
+    if content.current_lines:
+        content.update_processed_sections()
+    if content.pub_date:
+        logging.info(f"Pub date: {content.pub_date}")
     else:
         logging.critical("No publication date found!")
-    return (processed_text, pub_date)
-        ## finish this: it treats inline & full line commands equally; need to change markup in txt to be @@CMD(@@) for all commands
-    #     command: Command = get_command(line)
-    #     match command.order:
-    #         case Instruction.NONE:
-    #             if currently_ignoring:
-    #                 continue
-    #             else:
-    #                 line = get_inline_commands(line, concordance)
-    #                 section.append(line)
-    #         case Instruction.IGNORE:
-    #             currently_ignoring = True
-    #         case Instruction.PROCESS:
-    #             currently_ignoring = False
-    #         case Instruction.NEW_SECTION:
-    #             if len(current_sections) > 1:
-    #                 # section.insert(0, create_shared_description_message(current_sections, concordance))
-    #                 overview["EXTRA_sections"] += len(current_sections) - 1
-    #             for section_to_save in current_sections:
-    #                 processed_text[section_to_save] = section
-    #             current_sections = command.details
-    #             currently_ignoring = True ## ignore text at beginning of section
-    #             section = []
-    #         case Instruction.META:
-    #             if command.details[0].lower() == "pub_date":
-    #                 pub_date = command.details[1]
-    #         case Instruction.UNKNOWN:
-    #             msg = f"Unknown command used (check spelling?) {line}"
-    #             logging.warning(msg)
-    #             # raise UserWarning("Unknown command used (check spelling?)")
-    #     overview[command.order.name] += 1
-    #     if command.order != Instruction.NONE:
-    #         logging.info(f"{command.order.name} {f'-> {command.details}' if command.details else ''}")
-    # if section:
-    #     for section_to_save in current_sections:
-    #         processed_text[section_to_save] = section
-    # if pub_date:
-    #     logging.info(f"Pub date: {pub_date}")
-    # else:
-    #     logging.critical("No publication date found!")
-    # return (processed_text, pub_date)
+    return content
 
 
-def identify_commands(line: str) -> list[tuple[str, str, str]]:
-  simple_commands = ["process", "ignore"]   # "@@CMD\n" or "@@CMD@@..."
-  compound_commands = ["meta", "link"]      # "@@CMD:value@@"
-  open_cmd = False
-  output = []
-  pre_parsed = [el for el in re.split(r"(@@)", line) if el]
-  ## re group preserves "@@": allows it to be matched with command to distinguish "PROCESS" (text) vs "@@PROCESS" (cmd)
-  for phrase in pre_parsed:
-    cmd, value, rest = "","",""
-    if phrase == "@@":
-      open_cmd = not open_cmd
-      continue
-    if open_cmd:
-      if phrase.lower() in simple_commands:
-        cmd = phrase
-      else:
-        tmp = phrase.split(":")
-        if len(tmp) == 1:
-          rest = phrase
+def chunk_by_command(line: str) -> list[tuple[str, Command, str]]:
+    open_cmd = False
+    output = []
+    pre_parsed_line = [el for el in re.split(r"(@@)", line) if el]
+    ## re group preserves "@@": allows it to be matched with command to distinguish "PROCESS" (text) vs "@@PROCESS" (cmd)
+    for phrase in pre_parsed_line:
+        if phrase == "@@":
+            open_cmd = not open_cmd
+            continue
+        if open_cmd:
+            _type, cmd, other = parse_command(phrase)
         else:
-          cmd, value = phrase.split(":")
-          if cmd.lower() not in compound_commands:
-            rest = phrase
-            cmd, value = "", ""
+            _type = "none"
+            cmd = Command("", [])
+            other = phrase
+            # print(f">>>> {phrase[:50]}")
+        output.append((_type, cmd, other))
+    return output
+
+
+def parse_command(phrase: str) -> tuple[str, Command, str]:
+    simple_commands = ["process", "ignore"]  # "@@CMD\n" or "@@CMD@@..."
+    compound_commands = ["meta", "link", "new"]  # "@@CMD:value@@"
+    result: tuple[str, Command, str]
+    # _type = ""
+    # cmd = Command("", [])
+    # other = ""
+    if phrase.lower() in simple_commands:
+        # cmd.verb = phrase.lower()
+        # _type = "V"
+        result = ("V", Command(phrase.lower(), []), "")
     else:
-      rest = phrase
-    output.append((cmd, value, rest))
-  return output
+        verb_object = phrase.split(":")
+        if len(verb_object) == 1:
+            # _type = "unknown"
+            # other = phrase
+            result = ("unknown", Command("", []), "")
+        else:
+            # cmd.verb, raw_object = verb_object
+            # cmd.object_list = raw_object.split("=")
+            # cmd.verb = cmd.verb.lower()
+            # if cmd.verb in compound_commands:
+            verb, raw_object = verb_object
+            # object_list = raw_object.split("=")
+            verb = verb.lower()
+            if verb in compound_commands:
+                # _type = "VO"
+                result = ("VO", Command(verb, raw_object.split("=")), "")
+            else:
+                # _type = "none"
+                # cmd.verb, cmd.object_list, other = "", [], phrase
+                result = ("none", Command("", []), phrase)
+    # return (_type, cmd, other)
+    return result
 
 
-def create_shared_description_message(current_sections: list[str], concordance: dict[str, list[str]]) -> str:
+def process_verb(cmd: Command, content: Content) -> Content:
+    match cmd.verb:
+        case "ignore":
+            content.currently_ignoring = True
+        case "process":
+            content.currently_ignoring = False
+        case "unknown":
+            msg = f"unknown verb ({cmd.object_list})"
+            logging.warning(msg)
+            # print(msg)
+    # content.line += f"**{cmd.verb}**"
+    return content
+
+
+def process_verb_object(cmd: Command, content: Content, concordance) -> Content:
+    # if content.currently_ignoring:
+    #     if cmd.verb == "new":
+    #         content.currently_ignoring = False
+    #     else:
+            # return content
+    match cmd.verb:
+        case "new":
+            if (key_count := len(content.current_section_keys)) > 1:
+                overview.count["EXTRA_sections"] += key_count - 1
+                # print(f"EXTRA_sections {key_count - 1}")
+            new_section_keys = [
+                el for el in re.split(r"[\s&,]", cmd.object_list[0]) if el
+            ]
+            content.start_new_section(new_section_keys)
+            content.currently_ignoring = True  ## ignore up to "process" in Penny
+        case "meta":
+            if cmd.object_list[0].lower() == "pub_date":
+                content.pub_date = cmd.object_list[1]
+            else:
+                msg = f"Unknown META value: {cmd.object_list}"
+                logging.warning(msg)
+        case "link":
+            text = cmd.object_list[0]
+            content.add_to_line(text)
+            # content.line = text
+            # currently, links are ignored, but see this possibility:
+            # number = re.sub(r"[^\d]", "", text)
+            # if number:
+            #     ref = concordance.get(number, ["", ""])[1]
+            #     content.line = f" [{ref}]" if ref else ""
+        case _:
+            # logging.warning(f"The command '{command}' is unknown.")
+            msg = f"The command '{cmd.verb}' is unknown."
+            logging.warning(msg)
+            # content.line = str(cmd.object_list)
+
+        # overview.count[command] += 1
+    return content
+
+
+def create_shared_description_message(
+    current_sections: list[str], concordance: dict[str, list[str]]
+) -> str:
     # shared_blurb = " & ". join((f"{section} ({concordance[section][1]})" for section in current_sections))
-    shared_blurb = " & ". join((f"{section} ({concordance.get(section, ("","UNKNOWN"))[1]})" for section in current_sections))
-    message = f"[Description shared between {len(current_sections)} items: {shared_blurb}]"
+    shared_blurb = " & ".join(
+        (
+            f"{section} ({concordance.get(section, ("","UNKNOWN"))[1]})"
+            for section in current_sections
+        )
+    )
+    message = (
+        f"[Description shared between {len(current_sections)} items: {shared_blurb}]"
+    )
     logging.info(message)
     return message
 
 
-def prepare_for_csv(processed_text: dict[str, list[str]], concordance: dict[str, list[str]], published_date: str, import_identifier: str,) -> list[ExcelRow]:
+def prepare_for_csv(
+    content: Content,
+    concordance: dict[str, list[str]],
+    import_identifier: str,
+) -> list[ExcelRow]:
     headings = (
-        "ID", # Museum+ id of the item described
-        "Import identifier",    # name given to this batch operation
-        "Type", # Always catalogue text
-        "Sort", # Always '100' in case of multiple entries
+        "ID",  # Museum+ id of the item described
+        "Import identifier",  # name given to this batch operation
+        "Type",  # Always catalogue text
+        "Sort",  # Always '100' in case of multiple entries
         "Purpose",  # TODO: check this should be empty = 'purpose'
-        "Audience", # Always 'public'
-        "Status",   # Always '05 Published'
+        "Audience",  # Always 'public'
+        "Status",  # Always '05 Published'
         "Language",
-        "Published Date",   # DD/MM/YYYY
+        "Published Date",  # DD/MM/YYYY
         "Title / Ref. No.",  # TODO: check this should be empty = 'title/ref. no.'
         "Text",
         "Source",  # TODO: check this should be empty = 'source'
-        "Notes"
-        )
+        "Notes",
+    )
     output: list[ExcelRow] = []
     object_id: str
     audience = "public"
@@ -454,7 +412,8 @@ def prepare_for_csv(processed_text: dict[str, list[str]], concordance: dict[str,
     _type = "catalogue text"
     language = "en"
     output.append(headings)
-    for num, lines in processed_text.items():
+    # for num, lines in content.processed_text.items():
+    for num, lines in content.processed_sections.items():
         object_from_concordance = concordance.get(num, None)
         if not object_from_concordance:
             logging.critical(f"No object id found in concordance for record {num}.")
@@ -465,21 +424,23 @@ def prepare_for_csv(processed_text: dict[str, list[str]], concordance: dict[str,
             object_id = object_from_concordance[0]
             _sort = "100"
             text = "\n\n".join(lines)
-            output.append((
-                object_id,
-                import_identifier,
-                _type,
-                _sort,
-                purpose,
-                audience,
-                status,
-                language,
-                published_date,
-                title,
-                text,
-                source,
-                notes,
-            ))
+            output.append(
+                (
+                    object_id,
+                    import_identifier,
+                    _type,
+                    _sort,
+                    purpose,
+                    audience,
+                    status,
+                    language,
+                    content.pub_date,
+                    title,
+                    text,
+                    source,
+                    notes,
+                )
+            )
     return output
 
 
@@ -490,15 +451,14 @@ def overview_report() -> str:
     report += f"\t**Total number of sections processed, including ones sharing same description = {overview.count["NEW_SECTION"] + overview.count["EXTRA_sections"]}\n"
     report += f"\t**Total number of sections output to csv = {overview.count["records_output"]}\n"
     missing = overview.missing["from_concordance"]
-    missing_details = f" (record no.{"s" if len(missing) > 1 else ""}: {', '.join([str(el) for el in missing])})" if len(missing) else ""
+    missing_details = (
+        f" (record no.{"s" if len(missing) > 1 else ""}: {', '.join([str(el) for el in missing])})"
+        if len(missing)
+        else ""
+    )
     report += f"\t**Total number of sections without links in concordance: {len(missing)}{missing_details}\n"
     report += "\t" + ("*" * 73)
     return report
-
-
-
-
-
 
 
 def main() -> None:
@@ -514,16 +474,23 @@ def main() -> None:
         batch_name = source_file.stem
         # published_date = "01/01/1992"
 
-        logging.info(f"Reading from {source_file.name} and writing to {destination_file.name}...")
+        logging.info(
+            f"Reading from {source_file.name} and writing to {destination_file.name}..."
+        )
         raw_lines: list[str] = read_lines(source_file)
-        processed_text, published_date = group_lines(raw_lines, concordance)
+        # processed_text, published_date = process(raw_lines, concordance)
+        content = process(raw_lines, concordance)
         del raw_lines
-        csv_ready_text = prepare_for_csv(processed_text, concordance, published_date, batch_name)
-        del processed_text
+        csv_ready_text = prepare_for_csv(content, concordance, batch_name)
+        # csv_ready_text = prepare_for_csv(
+        #     processed_text, concordance, published_date, batch_name
+        # )
+        # del processed_text
 
         logging.info(overview_report())
         # logging.info(f"Processed {len(csv_ready_text) - 1} sections from {source_file.name}.\n\n" )
         write_csv(destination_file, csv_ready_text)
+
 
 if __name__ == "__main__":
     main()

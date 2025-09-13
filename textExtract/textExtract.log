@@ -1,30 +1,11 @@
 INFO:Reading from penny_sculpture_1-10.edited.txt and writing to penny_sculpture_1-10.edited.csv...
 INFO:Removed BOM from start of file. <@@META:PUB>
-INFO:META -> ['PUB_DATE', '01/01/1992']
-INFO:NEW_SECTION -> ['1', '2']
-INFO:PROCESS 
-INFO:NEW_SECTION -> ['3']
-INFO:PROCESS 
-INFO:NEW_SECTION -> ['4']
-INFO:PROCESS 
-INFO:NEW_SECTION -> ['5']
-INFO:PROCESS 
-INFO:NEW_SECTION -> ['6']
-INFO:PROCESS 
-INFO:NEW_SECTION -> ['7']
-INFO:PROCESS 
-INFO:NEW_SECTION -> ['8']
-INFO:PROCESS 
-INFO:NEW_SECTION -> ['9']
-INFO:PROCESS 
-INFO:NEW_SECTION -> ['10']
-INFO:PROCESS 
 INFO:Pub date: 01/01/1992
 CRITICAL:No object id found in concordance for record 7.
 INFO:**********************************************************************
 	**Overview of commands performed:
 	**Each section included a 'process' statement: True
-	**Total number of sections processed, including ones sharing same description = 10
+	**Total number of sections processed, including ones sharing same description = 1
 	**Total number of sections output to csv = 9
 	**Total number of sections without links in concordance: 1 (record no.: 7)
 	*************************************************************************
