@@ -1,12 +1,36 @@
-INFO:Reading from penny_sculpture_1-10.edited.txt and writing to penny_sculpture_1-10.edited.csv...
+INFO:Reading from penny_sculpture_1-150.edited.txt and writing to penny_sculpture_1-150.edited.csv...
 INFO:Removed BOM from start of file. <@@META:PUB>
+ERROR:>>>> UNKNOWN command: Command(verb='', object_list=[])
 INFO:Pub date: 01/01/1992
-CRITICAL:No object id found in concordance for record 7.
+WARNING:No object id found in concordance for record 7.
+WARNING:No object id found in concordance for record 40.
+WARNING:No object id found in concordance for record 63.
+WARNING:No object id found in concordance for record 64.
+WARNING:No object id found in concordance for record 65.
+WARNING:No object id found in concordance for record 66.
+WARNING:No object id found in concordance for record 67.
+WARNING:No object id found in concordance for record 87.
+WARNING:No object id found in concordance for record 90.
+WARNING:No object id found in concordance for record 91.
+WARNING:No object id found in concordance for record 92.
+WARNING:No object id found in concordance for record 105.
+CRITICAL:Record 7 excluded from csv output as it lacks an object ID.
+CRITICAL:Record 40 excluded from csv output as it lacks an object ID.
+CRITICAL:Record 63 excluded from csv output as it lacks an object ID.
+CRITICAL:Record 64 excluded from csv output as it lacks an object ID.
+CRITICAL:Record 65 excluded from csv output as it lacks an object ID.
+CRITICAL:Record 66 excluded from csv output as it lacks an object ID.
+CRITICAL:Record 67 excluded from csv output as it lacks an object ID.
+CRITICAL:Record 87 excluded from csv output as it lacks an object ID.
+CRITICAL:Record 90 excluded from csv output as it lacks an object ID.
+CRITICAL:Record 91 excluded from csv output as it lacks an object ID.
+CRITICAL:Record 92 excluded from csv output as it lacks an object ID.
+CRITICAL:Record 105 excluded from csv output as it lacks an object ID.
 INFO:**********************************************************************
 	** Overview of commands performed:
-	** meta=1, new=9, process=9, link=4, EXTRA_sections=1, records_output=9
-	** Each section included a 'process' statement: True
-	** Total number of sections processed, including ones sharing same description = 10
-	** Total number of sections output to csv = 9
-	** Total number of sections without links in concordance: 1 (record no.: 7)
+	** meta=1, new=129, process=128, link=152, EXTRA_sections=20, records_output=137
+	** Each section included a 'process' statement: False
+	** Total number of sections processed, including ones sharing same description = 149
+	** Total number of sections output to csv = 137
+	** Total number of sections without links in concordance: 12 (record no.s: 7, 40, 63, 64, 65, 66, 67, 87, 90, 91, 92, 105)
 	*************************************************************************

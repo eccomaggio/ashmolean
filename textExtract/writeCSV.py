@@ -1,17 +1,16 @@
+# import argparse
 from pathlib import Path
+from tools import shared
 from csv import reader, writer
-import argparse
 from openpyxl import load_workbook  # type: ignore[import]
 
-# import datetime
-# import pytz
-# from enum import Enum, auto
 from dataclasses import dataclass, field
 
 # from typing import Iterable
 import logging
 import re
 from collections import defaultdict
+from copy import copy as shallow_copy
 
 from pprint import pprint
 
@@ -34,21 +33,32 @@ class Overview:
 
 overview = Overview()
 
+@dataclass
+class Section:
+    id: str
+    oid: str
+    onum: str
+    paragraphs: list[str]
+
 
 class Content:
     def __init__(self, pd: str, ps: dict, cl: list, line: str, csk: list, cinfo: dict, ci=True):
         self.pub_date: str = pd
-        self.processed_sections: dict[str, list[str]] = ps
-        self.current_lines: list[str] = cl
+        # self.processed_sections: dict[str, list[str]] = ps
+        self.processed_sections: dict[str, Section] = ps
+        # self.current_lines: list[str] = cl
+        self.current = Section("", "", "", [])
         self.line: str = line
         self.current_section_keys: list[str] = csk
-        self.current_info: dict[str, str] = cinfo
+        # self.current_info: dict[str, str] = cinfo
         self.currently_ignoring: bool = ci
 
     def update_processed_sections(self):
         for key in self.current_section_keys:
-            self.processed_sections[key] = self.current_lines
-        self.current_lines = []
+            # self.processed_sections[key].paragraphs = self.current_lines
+            self.processed_sections[key] = shallow_copy(self.current)
+        # self.current_lines = []
+        self.current = Section("", "", "", [])
         self.current_section_keys = []
 
     def start_new_section(self, new_section_keys: list[str]):
@@ -58,7 +68,8 @@ class Content:
 
     def update_current_lines(self):
         if self.line:
-            self.current_lines.append(self.line)
+            # self.current_lines.append(self.line)
+            self.current.paragraphs.append(self.line)
             self.line = ""
 
     def add_to_line(self, part:str):
@@ -67,19 +78,6 @@ class Content:
             self.line += part
 
 
-# class Instruction(Enum):
-#     NONE = auto()
-#     NEW_SECTION = auto()
-#     PROCESS = auto()
-#     IGNORE = auto()
-#     META = auto()
-#     UNKNOWN = auto()
-
-
-# @dataclass
-# class Command:
-#     order: Instruction
-#     details: list[str]
 @dataclass
 class Command:
     verb: str
@@ -89,60 +87,60 @@ class Command:
 type ExcelRow = tuple[str, str, str, str, str, str, str, str, str, str, str, str, str]
 
 
-def argument_parser() -> tuple[Path, Path, Path]:
-    """Parse command line arguments."""
-    parser = argparse.ArgumentParser(description="Process some text files.")
-    parser.add_argument(
-        "-s", "--source", type=Path, default=Path("input.txt"), help="Source file path"
-    )
-    parser.add_argument(
-        "-o",
-        "--output",
-        type=Path,
-        default=Path("output.csv"),
-        help="Destination file path",
-    )
-    parser.add_argument(
-        "-c",
-        "--concordance",
-        type=Path,
-        default=Path("concordance.xlsx"),
-        help="Concordance file path",
-    )
-    args = parser.parse_args()
-    return (args.source, args.output, args.concordance)
+# def argument_parser() -> tuple[Path, Path, Path]:
+#     """Parse command line arguments."""
+#     parser = argparse.ArgumentParser(description="Process some text files.")
+#     parser.add_argument(
+#         "-s", "--source", type=Path, default=Path("input.txt"), help="Source file path"
+#     )
+#     parser.add_argument(
+#         "-o",
+#         "--output",
+#         type=Path,
+#         default=Path("output.csv"),
+#         help="Destination file path",
+#     )
+#     parser.add_argument(
+#         "-c",
+#         "--concordance",
+#         type=Path,
+#         default=Path("concordance.xlsx"),
+#         help="Concordance file path",
+#     )
+#     args = parser.parse_args()
+#     return (args.source, args.output, args.concordance)
 
 
-def read_lines(file_path: Path) -> list[str]:
-    """Read lines from a file and return them as a list."""
-    with file_path.open("r", encoding="utf-8") as file:
-        raw_lines = file.readlines()
-    # if ord(raw_lines[0][0]) == 65279:
-    #     raw_lines[0] = raw_lines[0][1:]
-    raw_lines[0] = remove_bom(raw_lines[0])
-    raw_lines = [line.strip() for line in raw_lines]
-    return raw_lines
-    # return file.readlines()
+# def read_lines(file_path: Path) -> list[str]:
+#     """Read lines from a file and return them as a list."""
+#     with file_path.open("r", encoding="utf-8") as file:
+#         raw_lines = file.readlines()
+#     # if ord(raw_lines[0][0]) == 65279:
+#     #     raw_lines[0] = raw_lines[0][1:]
+#     raw_lines[0] = remove_bom(raw_lines[0])
+#     raw_lines = [line.strip() for line in raw_lines]
+#     return raw_lines
+#     # return file.readlines()
 
 
-def remove_bom(line: str) -> str:
-    # print(f">>> start character={ord(line[0])} ({ord(line[0]) == 65279})")
-    if ord(line[0]) == 65279:
-        line = line[2:]
-        logging.info(f"Removed BOM from start of file. <{line[:10]}>")
-        # return line[1:]
-    # if line.startswith("\xFF\xFE"):
-    #     logging.info("Removed BOM from start of file.")
-    #     return line[3:]
-    else:
-        logging.error("No BOM found.")
-    return line
+# def remove_bom(line: str) -> str:
+#     # print(f">>> start character={ord(line[0])} ({ord(line[0]) == 65279})")
+#     if ord(line[0]) == 65279:
+#         line = line[2:]
+#         logging.info(f"Removed BOM from start of file. <{line[:10]}>")
+#         # return line[1:]
+#     # if line.startswith("\xFF\xFE"):
+#     #     logging.info("Removed BOM from start of file.")
+#     #     return line[3:]
+#     else:
+#         logging.error("No BOM found.")
+#     return line
 
 
-def write_lines(file_path: Path, lines: list[str]) -> None:
-    """Write a list of lines to a file."""
-    with file_path.open("w", encoding="utf-8") as file:
-        file.writelines(lines)
+# def write_lines(file_path: Path, lines: list[str]) -> None:
+#     """Write a list of lines to a file."""
+#     with file_path.open("w", encoding="utf-8") as file:
+#         file.writelines(lines)
 
 
 def write_csv(file_path: Path, data: list) -> None:
@@ -210,8 +208,9 @@ def normalise_concordance(raw: list[list[str]]) -> dict[str, list[str]]:
     for row in raw:
         object_id = row[0]
         object_num = row[1]
-        if row[5].isnumeric():
-            concordance[row[5]] = [object_id, object_num]
+        key = row[5]
+        if key.isnumeric():
+            concordance[key] = [object_id, object_num]
     return concordance
 
 
@@ -239,7 +238,8 @@ def process(raw_lines: list[str], concordance: dict[str, list[str]]) -> Content:
                     msg = f">>>> UNKNOWN command: {cmd}"
                     logging.error(msg)
         content.update_current_lines()
-    if content.current_lines:
+    # if content.current_lines:
+    if content.current.paragraphs:
         content.update_processed_sections()
     if content.pub_date:
         logging.info(f"Pub date: {content.pub_date}")
@@ -330,11 +330,10 @@ def process_verb_object(cmd: Command, content: Content, concordance) -> Content:
             # if number:
             #     ref = concordance.get(number, ["", ""])[1]
             #     content.line = f" [{ref}]" if ref else ""
-        # TODO: work out how to save these per section; use in preference to concordance, if available
         case "oid":
-            content.current_info["object_id"] = cmd.object_list[0]
+            content.current.oid = cmd.object_list[0]
         case "onum":
-            content.current_info["object_num"] = cmd.object_list[0]
+            content.current.onum = cmd.object_list[0]
         case _:
             msg = f"The command '{cmd.verb}' is unknown."
             logging.warning(msg)
@@ -358,9 +357,18 @@ def create_shared_description_message(
     return message
 
 
+def apply_concordance(content:Content, concordance: dict[str, list[str]]) -> Content:
+    for num, section in content.processed_sections.items():
+        if not section.oid:
+            section.oid, section.onum = concordance.get(num, ["",""])
+        if not section.oid:
+            logging.warning(f"No object id found in concordance for record {num}.")
+            overview.missing["from_concordance"].append(int(num))
+    return content
+
+
 def prepare_for_csv(
     content: Content,
-    concordance: dict[str, list[str]],
     import_identifier: str,
 ) -> list[ExcelRow]:
     headings = (
@@ -368,62 +376,45 @@ def prepare_for_csv(
         "Import identifier",  # name given to this batch operation
         "Type",  # Always catalogue text
         "Sort",  # Always '100' in case of multiple entries
-        "Purpose",  # TODO: check this should be empty = 'purpose'
+        "Purpose",
         "Audience",  # Always 'public'
         "Status",  # Always '05 Published'
         "Language",
         "Published Date",  # DD/MM/YYYY
-        "Title / Ref. No.",  # TODO: check this should be empty = 'title/ref. no.'
+        "Title / Ref. No.",
         "Text",
-        "Source",  # TODO: check this should be empty = 'source'
+        "Source",
         "Notes",
     )
     output: list[ExcelRow] = []
-    object_id: str
-    audience = "public"
-    purpose = ""
-    title = ""
-    notes = ""
-    source = ""
-    status = "05 Published"
-    _type = "catalogue text"
-    language = "en"
     output.append(headings)
-    # for num, lines in content.processed_text.items():
-    for num, lines in content.processed_sections.items():
-        object_from_concordance = concordance.get(num, None)
-        if not object_from_concordance:
-            logging.critical(f"No object id found in concordance for record {num}.")
-            overview.missing["from_concordance"].append(int(num))
-            # overview["from_concordance"].append(num)
-        else:
+    for num, section in content.processed_sections.items():
+        if section.oid:
             overview.count["records_output"] += 1
-            object_id = object_from_concordance[0]
-            _sort = "100"
-            text = "\n\n".join(lines)
             output.append(
                 (
-                    object_id,
+                    section.oid,
                     import_identifier,
-                    _type,
-                    _sort,
-                    purpose,
-                    audience,
-                    status,
-                    language,
+                    "catalogue text",
+                    "100",
+                    "",
+                    "public",
+                    "05 Published",
+                    "en",
                     content.pub_date,
-                    title,
-                    text,
-                    source,
-                    notes,
+                    "",
+                    "\n\n".join(section.paragraphs),
+                    "",
+                    "",
                 )
             )
-    return output
+        else:
+            logging.critical(f"Record {num} excluded from csv output as it lacks an object ID.")
+            # overview.missing["from_concordance"].append(int(num))
+    return (output)
 
 
 def overview_report() -> str:
-    # print(overview.count)
-    # print(overview.missing)
     report = "*" * 70 + "\n"
     report += "\t** Overview of commands performed:\n"
     report += f"\t** {", ".join([f"{key}={val}" for key, val in overview.count.items()])}\n"
@@ -441,8 +432,39 @@ def overview_report() -> str:
     report += "\t" + ("*" * 73)
     return report
 
+
 def plural_s(count):
     return "s" if count > 1 else ""
+
+
+def update_text(outfile: Path, data: list[str], content:Content) -> None:
+    """
+    An attempt to update the file to add in the oid & onum
+    """
+    with outfile.open("w", encoding="utf-8") as f:
+        ## print only first of a run of blank lines
+        prev_was_blank = True
+        for i, line in enumerate(data):
+            if not line and prev_was_blank:
+                continue
+            elif not line:
+                f.write(line + "\n")
+                prev_was_blank = True
+                continue
+            else:
+                prev_was_blank = False
+            if re.match(r"@@\d", line):
+                keys = line[2:].strip().split("&")
+                oid, onum = [], []
+                for key in keys:
+                    oid.append(content.processed_sections[key].oid)
+                    onum.append(content.processed_sections[key].onum)
+                f.write("\n")
+                f.write(f"@@NEW:{'&'.join(keys)}\n")
+                f.write(f"@@OID:{'&'.join(oid)}\n")
+                f.write(f"@@ONUM:{'&'.join(onum)}\n")
+            else:
+                f.write(line + "\n")
 
 
 def main() -> None:
@@ -450,20 +472,26 @@ def main() -> None:
     csv_dir = Path("csv_files")
     if not csv_dir.exists():
         csv_dir.mkdir()
+    update_dir = Path("updates")
+    if not update_dir.exists():
+        update_dir.mkdir()
     concordance = make_concordance("penny.concordance.xlsx")
     for source_file in text_dir.glob("*.txt"):
         overview.count.clear()
         overview.missing.clear()
         destination_file = csv_dir / f"{source_file.stem}.csv"
+        updated_file = update_dir / f"{source_file.stem}.updated.txt"
         batch_name = source_file.stem
         logging.info(
             f"Reading from {source_file.name} and writing to {destination_file.name}..."
         )
-        raw_lines: list[str] = read_lines(source_file)
+        raw_lines: list[str] = shared.read_lines(source_file)
         content = process(raw_lines, concordance)
+        content = apply_concordance(content, concordance)
+        csv_ready_text = prepare_for_csv(content, batch_name)
+        # update_text(update_dir / f"{source_file.stem}.updated.txt", raw_lines, content)
+        update_text(updated_file, raw_lines, content)
         del raw_lines
-        csv_ready_text = prepare_for_csv(content, concordance, batch_name)
-        pprint(content)
         logging.info(overview_report())
         write_csv(destination_file, csv_ready_text)
 
