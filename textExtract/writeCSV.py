@@ -143,50 +143,50 @@ type ExcelRow = tuple[str, str, str, str, str, str, str, str, str, str, str, str
 #         file.writelines(lines)
 
 
-def write_csv(file_path: Path, data: list) -> None:
-    """Write a list of lists to a CSV file."""
-    with file_path.open("w", encoding="utf-8", newline="") as file:
-        csv_writer = writer(file)
-        csv_writer.writerows(data)
+# def write_csv(file_path: Path, data: list) -> None:
+#     """Write a list of lists to a CSV file."""
+#     with file_path.open("w", encoding="utf-8", newline="") as file:
+#         csv_writer = writer(file)
+#         csv_writer.writerows(data)
 
 
-def read_csv(file_path: Path) -> list[list[str]]:
-    """Read a CSV file and return its content as a list of lists."""
-    with file_path.open("r", encoding="utf-8") as file:
-        csv_reader = reader(file)
-        return list(csv_reader)
+# def read_csv(file_path: Path) -> list[list[str]]:
+#     """Read a CSV file and return its content as a list of lists."""
+#     with file_path.open("r", encoding="utf-8") as file:
+#         csv_reader = reader(file)
+#         return list(csv_reader)
 
 
-def extract_from_excel(excel_file_address: Path) -> list[list[str]]:
-    """
-    excel seems pretty random in how it assigns string/int/float, so...
-    this routine coerces everything into a string,
-    strips ".0" from misrecognised floats
-    & removes trailing spaces
-    """
-    excel_file_name: str = str(excel_file_address.resolve())
-    excel_sheet = load_workbook(filename=excel_file_name).active
-    sheet = []
-    if excel_sheet:
-        for excel_row in excel_sheet.iter_rows(min_row=2, values_only=True):
-            row = []
-            if not excel_row[0]:
-                break
-            for col in excel_row:
-                if col:
-                    data = str(col).strip()
-                    data = trim_mistaken_decimals(data)
-                else:
-                    data = ""
-                row.append(data)
-            sheet.append(row)
-    return sheet
+# def extract_from_excel(excel_file_address: Path) -> list[list[str]]:
+#     """
+#     excel seems pretty random in how it assigns string/int/float, so...
+#     this routine coerces everything into a string,
+#     strips ".0" from misrecognised floats
+#     & removes trailing spaces
+#     """
+#     excel_file_name: str = str(excel_file_address.resolve())
+#     excel_sheet = load_workbook(filename=excel_file_name).active
+#     sheet = []
+#     if excel_sheet:
+#         for excel_row in excel_sheet.iter_rows(min_row=2, values_only=True):
+#             row = []
+#             if not excel_row[0]:
+#                 break
+#             for col in excel_row:
+#                 if col:
+#                     data = str(col).strip()
+#                     data = trim_mistaken_decimals(data)
+#                 else:
+#                     data = ""
+#                 row.append(data)
+#             sheet.append(row)
+#     return sheet
 
 
-def trim_mistaken_decimals(string: str) -> str:
-    if string.endswith(".0"):
-        string = string[:-2]
-    return string
+# def trim_mistaken_decimals(string: str) -> str:
+#     if string.endswith(".0"):
+#         string = string[:-2]
+#     return string
 
 
 def make_concordance(excel_file_path: str) -> dict[str, list[str]]:
@@ -198,7 +198,7 @@ def make_concordance(excel_file_path: str) -> dict[str, list[str]]:
 
     PW:litCatNo (column 5) is the number given in the publication, so it is the key to the object id
     """
-    raw = extract_from_excel(Path(excel_file_path))
+    raw = shared.extract_from_excel(Path(excel_file_path))
     concordance = normalise_concordance(raw)
     return concordance
 
@@ -493,7 +493,7 @@ def main() -> None:
         update_text(updated_file, raw_lines, content)
         del raw_lines
         logging.info(overview_report())
-        write_csv(destination_file, csv_ready_text)
+        shared.write_csv(destination_file, csv_ready_text)
 
 
 if __name__ == "__main__":
