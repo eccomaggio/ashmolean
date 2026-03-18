@@ -11,40 +11,25 @@ Given the environment:
 |   |- (python files)
 |
 |-writeCSV.py
-|-(Penny.concordance.xlsx) OR
-|-(Penny.concordance.json)
+|-Penny.concordance.xlsx
 
 
-All the .txt files in ./text_files will be processed (and run against a concordance, which looks up their Museum+ object number and catalogue number). If the concordance has already been created (i.e. there is a .json file, then this will be used to save time/effort.)
+All the .txt files in ./text_files will be processed (and run against a concordance, which looks up their Museum+ object number and catalogue number)
 
-The result is output as an Excel file for upload to museum+
+The result is output as a .csv for upload to museum+
 AND a .txt file including these two numbers for future reference (i.e. use without the concordance) is output in ./updates
 
-Markup:
-[One per line:]
-
-@@META:PUB_DATE=DD/MM/YYYY
-the publication date of the work
-
-@@NEW:1 or 1&2&...
-the section title or titles
-
-@@PROCESS
-Ignore any lines before this after encountering a @@NEW
-
-[Inline commands:]
-
-@@LINK: ... @@ -> e.g. @@LINK:No. 20@@
-insert link text -- but currently not used. The markup is simply discarded, leaving the bare text inside untouched.
 """
+# import argparse
 from pathlib import Path
 from tools import shared
+from csv import reader, writer
+from openpyxl import load_workbook  # type: ignore[import]
 
 from dataclasses import dataclass, field
 
 # from typing import Iterable
 import logging
-import sys
 import re
 from collections import defaultdict
 from copy import copy as shallow_copy
@@ -52,12 +37,12 @@ from copy import copy as shallow_copy
 from pprint import pprint
 
 logging.basicConfig(
+    filename="textExtract.log",
     level=logging.INFO,
+    # format='%(asctime)s %(levelname)s:%(message)s'
     format="%(levelname)s:%(message)s",
-    handlers=[
-        logging.FileHandler("textExtract.log", mode="w", encoding="utf-8"),
-        logging.StreamHandler(sys.stdout)
-    ],
+    filemode="w",
+    encoding="utf-8",
 )
 
 
@@ -81,15 +66,20 @@ class Section:
 class Content:
     def __init__(self, pd: str, ps: dict, cl: list, line: str, csk: list, cinfo: dict, ci=True):
         self.pub_date: str = pd
+        # self.processed_sections: dict[str, list[str]] = ps
         self.processed_sections: dict[str, Section] = ps
+        # self.current_lines: list[str] = cl
         self.current = Section("", "", "", [])
         self.line: str = line
         self.current_section_keys: list[str] = csk
+        # self.current_info: dict[str, str] = cinfo
         self.currently_ignoring: bool = ci
 
     def update_processed_sections(self):
         for key in self.current_section_keys:
+            # self.processed_sections[key].paragraphs = self.current_lines
             self.processed_sections[key] = shallow_copy(self.current)
+        # self.current_lines = []
         self.current = Section("", "", "", [])
         self.current_section_keys = []
 
@@ -100,6 +90,7 @@ class Content:
 
     def update_current_lines(self):
         if self.line:
+            # self.current_lines.append(self.line)
             self.current.paragraphs.append(self.line)
             self.line = ""
 
@@ -118,35 +109,119 @@ class Command:
 type ExcelRow = tuple[str, str, str, str, str, str, str, str, str, str, str, str, str]
 
 
-# def make_concordance_from_excel(excel_file_path: str) -> dict[str, list[str]]:
-#     """
-#     concordance layout with example data:
-#     row 0*  1*                   2                           3                   4                       5 (key)
-#     ObjID	ObjectNumber	    ObjectNumberSorted	        ReferenceNumber	    ObjectTitle	            PW:litCatNo
-#     742939	WA1947.191.176.1	WA1947.00191.00176.00001	Penny (1992) 1	    Flagellator of Christ	1
+# def argument_parser() -> tuple[Path, Path, Path]:
+#     """Parse command line arguments."""
+#     parser = argparse.ArgumentParser(description="Process some text files.")
+#     parser.add_argument(
+#         "-s", "--source", type=Path, default=Path("input.txt"), help="Source file path"
+#     )
+#     parser.add_argument(
+#         "-o",
+#         "--output",
+#         type=Path,
+#         default=Path("output.csv"),
+#         help="Destination file path",
+#     )
+#     parser.add_argument(
+#         "-c",
+#         "--concordance",
+#         type=Path,
+#         default=Path("concordance.xlsx"),
+#         help="Concordance file path",
+#     )
+#     args = parser.parse_args()
+#     return (args.source, args.output, args.concordance)
 
-#     PW:litCatNo (column 5) is the number given in the publication, so it is the key to the object id
+
+# def read_lines(file_path: Path) -> list[str]:
+#     """Read lines from a file and return them as a list."""
+#     with file_path.open("r", encoding="utf-8") as file:
+#         raw_lines = file.readlines()
+#     # if ord(raw_lines[0][0]) == 65279:
+#     #     raw_lines[0] = raw_lines[0][1:]
+#     raw_lines[0] = remove_bom(raw_lines[0])
+#     raw_lines = [line.strip() for line in raw_lines]
+#     return raw_lines
+#     # return file.readlines()
+
+
+# def remove_bom(line: str) -> str:
+#     # print(f">>> start character={ord(line[0])} ({ord(line[0]) == 65279})")
+#     if ord(line[0]) == 65279:
+#         line = line[2:]
+#         logging.info(f"Removed BOM from start of file. <{line[:10]}>")
+#         # return line[1:]
+#     # if line.startswith("\xFF\xFE"):
+#     #     logging.info("Removed BOM from start of file.")
+#     #     return line[3:]
+#     else:
+#         logging.error("No BOM found.")
+#     return line
+
+
+# def write_lines(file_path: Path, lines: list[str]) -> None:
+#     """Write a list of lines to a file."""
+#     with file_path.open("w", encoding="utf-8") as file:
+#         file.writelines(lines)
+
+
+# def write_csv(file_path: Path, data: list) -> None:
+#     """Write a list of lists to a CSV file."""
+#     with file_path.open("w", encoding="utf-8", newline="") as file:
+#         csv_writer = writer(file)
+#         csv_writer.writerows(data)
+
+
+# def read_csv(file_path: Path) -> list[list[str]]:
+#     """Read a CSV file and return its content as a list of lists."""
+#     with file_path.open("r", encoding="utf-8") as file:
+#         csv_reader = reader(file)
+#         return list(csv_reader)
+
+
+# def extract_from_excel(excel_file_address: Path) -> list[list[str]]:
 #     """
-#     raw = shared.extract_from_excel(Path(excel_file_path))
-#     concordance = normalise_concordance(raw)
-#     return concordance
-def make_concordance_from_excel(excel_file_path:Path) -> dict[str, list[str]]:
+#     excel seems pretty random in how it assigns string/int/float, so...
+#     this routine coerces everything into a string,
+#     strips ".0" from misrecognised floats
+#     & removes trailing spaces
+#     """
+#     excel_file_name: str = str(excel_file_address.resolve())
+#     excel_sheet = load_workbook(filename=excel_file_name).active
+#     sheet = []
+#     if excel_sheet:
+#         for excel_row in excel_sheet.iter_rows(min_row=2, values_only=True):
+#             row = []
+#             if not excel_row[0]:
+#                 break
+#             for col in excel_row:
+#                 if col:
+#                     data = str(col).strip()
+#                     data = trim_mistaken_decimals(data)
+#                 else:
+#                     data = ""
+#                 row.append(data)
+#             sheet.append(row)
+#     return sheet
+
+
+# def trim_mistaken_decimals(string: str) -> str:
+#     if string.endswith(".0"):
+#         string = string[:-2]
+#     return string
+
+
+def make_concordance(excel_file_path: str) -> dict[str, list[str]]:
     """
     concordance layout with example data:
-    row 0*  1*                   2                           3                   4                       5 (key)        6 notes
+    row 0*  1*                   2                           3                   4                       5 (key)
     ObjID	ObjectNumber	    ObjectNumberSorted	        ReferenceNumber	    ObjectTitle	            PW:litCatNo
     742939	WA1947.191.176.1	WA1947.00191.00176.00001	Penny (1992) 1	    Flagellator of Christ	1
 
     PW:litCatNo (column 5) is the number given in the publication, so it is the key to the object id
-    It takes the first worksheet regardless of name.
-    It returns a dictionary: { section id : [museum+ object number, catalogue number]}
     """
-    raw = shared.extract_from_excel(excel_file_path)
-    # print(">>>>>>>>>>>>>>>>>>>>!!!")
-    # pprint(raw)
-    # print(">>>>>>>>>>>>>>>>>>>>????")
+    raw = shared.extract_from_excel(Path(excel_file_path))
     concordance = normalise_concordance(raw)
-    # pprint(concordance)
     return concordance
 
 
@@ -185,6 +260,7 @@ def process(raw_lines: list[str], concordance: dict[str, list[str]]) -> Content:
                     msg = f">>>> UNKNOWN command: {cmd}"
                     logging.error(msg)
         content.update_current_lines()
+    # if content.current_lines:
     if content.current.paragraphs:
         content.update_processed_sections()
     if content.pub_date:
@@ -195,10 +271,6 @@ def process(raw_lines: list[str], concordance: dict[str, list[str]]) -> Content:
 
 
 def chunk_by_command(line: str) -> list[tuple[str, Command, str]]:
-    """
-    Given a string with embedded commands, marked by @@
-    returns a list
-    """
     open_cmd = False
     output = []
     pre_parsed_line = [el for el in re.split(r"(@@)", line) if el]
@@ -267,11 +339,7 @@ def process_verb_object(cmd: Command, content: Content, concordance) -> Content:
             content.currently_ignoring = True  ## ignore up to "process" in Penny
         case "meta":
             if cmd.object_list[0].lower() == "pub_date":
-                # content.pub_date = cmd.object_list[1]
-                date = cmd.object_list[1]
-                date = date.replace("/", "-")
-                date = date.replace(":", "-")
-                content.pub_date = date
+                content.pub_date = cmd.object_list[1]
             else:
                 msg = f"Unknown META value: {cmd.object_list}"
                 logging.warning(msg)
@@ -324,56 +392,42 @@ def apply_concordance(content:Content, concordance: dict[str, list[str]]) -> Con
 def prepare_for_csv(
     content: Content,
     import_identifier: str,
-    filter_by_id:list[str] | None = None,
 ) -> list[ExcelRow]:
     headings = (
-        "ID",       # Museum+ id of the item described
+        "ID",  # Museum+ id of the item described
         "Import identifier",  # name given to this batch operation
-        "Audience", # Always 'public'
-        "Date",     # DD/MM/YYYY
-        "Notes",
+        "Type",  # Always catalogue text
+        "Sort",  # Always '100' in case of multiple entries
         "Purpose",
-        "Sort",     # Always '100' in case of multiple entries
-        "Source",
-        "Status",   # Always '05 Published'
-        "Text",
-        "Title / Ref. No.",
-        "Type",     # Always catalogue text
+        "Audience",  # Always 'public'
+        "Status",  # Always '05 Published'
         "Language",
+        "Published Date",  # DD/MM/YYYY
+        "Title / Ref. No.",
+        "Text",
+        "Source",
+        "Notes",
     )
     output: list[ExcelRow] = []
-    object_id: str
-    audience = "public"
-    purpose = ""
-    _sort = "100"
-    title = ""
-    notes = ""
-    source = ""
-    status = "05 Published"
-    _type = "catalogue text"
-    language = "en"
     output.append(headings)
     for num, section in content.processed_sections.items():
-        if filter_by_id and section.oid in filter_by_id:
-            continue
         if section.oid:
             overview.count["records_output"] += 1
-            text = "\n\n".join(section.paragraphs)
             output.append(
                 (
                     section.oid,
                     import_identifier,
-                    audience,
+                    "catalogue text",
+                    "100",
+                    "",
+                    "public",
+                    "05 Published",
+                    "en",
                     content.pub_date,
-                    notes,
-                    purpose,
-                    _sort,
-                    source,
-                    status,
-                    text,
-                    title,
-                    _type,
-                    language,
+                    "",
+                    "\n\n".join(section.paragraphs),
+                    "",
+                    "",
                 )
             )
         else:
@@ -438,18 +492,12 @@ def update_text(outfile: Path, data: list[str], content:Content) -> None:
 def main() -> None:
     text_dir = Path("text_files")
     csv_dir = Path("csv_files")
-    concordance_file = Path("penny.concordance.xlsx")
-    if concordance_file.with_suffix(".json").exists():
-        concordance = shared.load_json_file(concordance_file.with_suffix(".json"))
-    else:
-        concordance = make_concordance_from_excel(concordance_file)
-        shared.export_dict_to_json(concordance, concordance_file)
     if not csv_dir.exists():
         csv_dir.mkdir()
     update_dir = Path("updates")
     if not update_dir.exists():
         update_dir.mkdir()
-    # concordance = make_concordance_from_excel("penny.concordance.xlsx")
+    concordance = make_concordance("penny.concordance.xlsx")
     for source_file in text_dir.glob("*.txt"):
         overview.count.clear()
         overview.missing.clear()
@@ -463,11 +511,11 @@ def main() -> None:
         content = process(raw_lines, concordance)
         content = apply_concordance(content, concordance)
         csv_ready_text = prepare_for_csv(content, batch_name)
+        # update_text(update_dir / f"{source_file.stem}.updated.txt", raw_lines, content)
         update_text(updated_file, raw_lines, content)
         del raw_lines
         logging.info(overview_report())
-        # shared.write_csv(destination_file, csv_ready_text)
-        shared.export_to_excel(destination_file, csv_ready_text)
+        shared.write_csv(destination_file, csv_ready_text)
 
 
 if __name__ == "__main__":
