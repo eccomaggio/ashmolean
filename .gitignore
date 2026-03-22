@@ -1,0 +1,56 @@
+### MacOS System Files ###
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+### Python General ###
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+### Environments ###
+.venv/
+venv/
+ENV/
+env/
+# For specialized envs like Conda
+.conda/
+
+### PySide6 / UI Specific ###
+# If you use Qt Designer, you might want to ignore the compiled resources
+# but keep the .ui files
+# qrc_*.py
+# ui_*.py
+
+### Data & Temporary Files ###
+*.log
+*.sqlite
+.ipynb_checkpoints/
+
+### Local/Secret Configuration ###
+.env
+.venv
+pip-log.txt
+pip-delete-this-directory.txt
