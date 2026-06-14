@@ -118,18 +118,6 @@ class Command:
 type ExcelRow = tuple[str, str, str, str, str, str, str, str, str, str, str, str, str]
 
 
-# def make_concordance_from_excel(excel_file_path: str) -> dict[str, list[str]]:
-#     """
-#     concordance layout with example data:
-#     row 0*  1*                   2                           3                   4                       5 (key)
-#     ObjID	ObjectNumber	    ObjectNumberSorted	        ReferenceNumber	    ObjectTitle	            PW:litCatNo
-#     742939	WA1947.191.176.1	WA1947.00191.00176.00001	Penny (1992) 1	    Flagellator of Christ	1
-
-#     PW:litCatNo (column 5) is the number given in the publication, so it is the key to the object id
-#     """
-#     raw = shared.extract_from_excel(Path(excel_file_path))
-#     concordance = normalise_concordance(raw)
-#     return concordance
 def make_concordance_from_excel(excel_file_path:Path) -> dict[str, list[str]]:
     """
     concordance layout with example data:
@@ -142,11 +130,7 @@ def make_concordance_from_excel(excel_file_path:Path) -> dict[str, list[str]]:
     It returns a dictionary: { section id : [museum+ object number, catalogue number]}
     """
     raw = shared.extract_from_excel(excel_file_path)
-    # print(">>>>>>>>>>>>>>>>>>>>!!!")
-    # pprint(raw)
-    # print(">>>>>>>>>>>>>>>>>>>>????")
     concordance = normalise_concordance(raw)
-    # pprint(concordance)
     return concordance
 
 
@@ -329,7 +313,7 @@ def prepare_for_csv(
     headings = (
         "ID",       # Museum+ id of the item described
         "Import identifier",  # name given to this batch operation
-        "Audience", # Always 'public'
+        "Audience", # Always 'Public'
         "Date",     # DD/MM/YYYY
         "Notes",
         "Purpose",
@@ -343,13 +327,14 @@ def prepare_for_csv(
     )
     output: list[ExcelRow] = []
     object_id: str
-    audience = "public"
+    audience = "Public"
     purpose = ""
     _sort = "100"
     title = ""
     notes = ""
     source = ""
-    status = "05 Published"
+    # status = "05 Published"
+    status = "" ## Laura's instructions for Penny (as unsure Ashmolean has publishing rights)
     _type = "catalogue text"
     language = "en"
     output.append(headings)
