@@ -327,7 +327,7 @@ def prepare_for_csv(
     )
     output: list[ExcelRow] = []
     object_id: str
-    audience = "Public"
+    audience = "Public"  ## NB capital P
     purpose = ""
     _sort = "100"
     title = ""
